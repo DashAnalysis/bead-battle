@@ -6,7 +6,9 @@ one player has fighters left standing.
 
 ## Play it
 
-Open **`bead-battle.html`** in any modern browser. Everything is inside that one file.
+**Online:** https://dashanalysis.github.io/bead-battle/ (published with GitHub Pages from the `main` branch).
+
+**Offline:** download **`bead-battle.html`** and open it in any modern browser. Everything is inside that one file.
 
 Opened like this, the game runs **on one device**: everyone plays on the same screen
 (pass-and-play), and games are saved in that browser only. See "Playing across devices"
@@ -22,6 +24,8 @@ below to change that.
 | `src/fighters.js` | The fighters: stats, picture, ability rule and signature-move rule for each. |
 | `src/perler-bead-weapons.jpeg` | The photo every fighter picture is cropped from. |
 | `build.py` | Rebuilds `bead-battle.html` from `src/`. Run `python3 build.py` after any change. |
+| `index.html` | Start page for the GitHub Pages site; it just opens `bead-battle.html`. |
+| `.nojekyll` | Tells GitHub Pages to publish the files exactly as they are. |
 
 You can also open `src/index.html` directly; it loads the other files next to it.
 
