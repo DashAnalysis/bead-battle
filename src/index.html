@@ -1,0 +1,1440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); color-scheme: light; }
+body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<title>Bead Battle Arena</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: arena page. Toolbar with your name; lobby list of battles; a battle shows the turn order strip,
+   one panel per player with their fighters, the action bar for whoever is up, and the battle log. */
+:root {
+  --bg: #e9ebf0; --surface: #ffffff; --surface-2: #f3f4f8; --ink: #1b2030; --muted: #5c6374; --line: #d5d9e2;
+  --accent: #d63a72; --accent-ink: #ffffff; --peg: rgba(27,32,48,.07); --shadow: 0 10px 30px rgba(20,24,36,.18);
+  --good: #1f8a4c; --warn: #c17a00; --bad: #c8322b; --good-bg: #e2f4ea;
+  --font-display: "Pixelify Sans", "Courier New", monospace;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --t-steel: #6b7a90; --t-crystal: #2f8fd8; --t-energy: #c99a00; --t-nature: #2e9b4f; --t-redstone: #d23b2f;
+  --t-storm: #3a5bd9; --t-shadow: #5b3f8f; --t-heart: #e0457b; --t-mob: #4c8a2a;
+  --s0: #d63a72; --s1: #2f7fd8; --s2: #1f9a5a; --s3: #c27c00; --s4: #7a4fc9; --s5: #0f9aa8;
+  --chip-ink: #ffffff;
+  --arena-bg: #d9e0ec; --arena-bg2: #f3f5fa; --arena-line: rgba(27,32,48,.22); --arena-wedge: rgba(214,58,114,.22); --arena-dot: rgba(27,32,48,.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #13151b; --surface: #1c1f28; --surface-2: #232733; --ink: #e9ecf3; --muted: #a2a9b9; --line: #323746;
+    --accent: #f06a98; --accent-ink: #1a0b12; --peg: rgba(255,255,255,.05); --shadow: 0 10px 30px rgba(0,0,0,.5);
+    --good: #6fd69a; --warn: #f2b25e; --bad: #f27166; --good-bg: #173325;
+    --t-steel: #9aa9bf; --t-crystal: #5fb2f0; --t-energy: #e7c13d; --t-nature: #57c477; --t-redstone: #f0675b;
+    --t-storm: #7d95f2; --t-shadow: #a487d6; --t-heart: #f27aa3; --t-mob: #83c25d;
+    --s0: #f06a98; --s1: #63a6f2; --s2: #4fcf88; --s3: #f0b44a; --s4: #ad8cf0; --s5: #3fd0dc;
+    --chip-ink: #111318;
+    --arena-bg: #1a1f2b; --arena-bg2: #0e1117; --arena-line: rgba(255,255,255,.2); --arena-wedge: rgba(240,106,152,.26); --arena-dot: rgba(255,255,255,.08);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #13151b; --surface: #1c1f28; --surface-2: #232733; --ink: #e9ecf3; --muted: #a2a9b9; --line: #323746;
+  --accent: #f06a98; --accent-ink: #1a0b12; --peg: rgba(255,255,255,.05); --shadow: 0 10px 30px rgba(0,0,0,.5);
+  --good: #6fd69a; --warn: #f2b25e; --bad: #f27166; --good-bg: #173325;
+  --t-steel: #9aa9bf; --t-crystal: #5fb2f0; --t-energy: #e7c13d; --t-nature: #57c477; --t-redstone: #f0675b;
+  --t-storm: #7d95f2; --t-shadow: #a487d6; --t-heart: #f27aa3; --t-mob: #83c25d;
+  --s0: #f06a98; --s1: #63a6f2; --s2: #4fcf88; --s3: #f0b44a; --s4: #ad8cf0; --s5: #3fd0dc;
+  --chip-ink: #111318;
+  --arena-bg: #1a1f2b; --arena-bg2: #0e1117; --arena-line: rgba(255,255,255,.2); --arena-wedge: rgba(240,106,152,.26); --arena-dot: rgba(255,255,255,.08);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--peg) 2.2px, transparent 2.6px);
+  background-size: 14px 14px;
+  color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+
+.top { position: relative; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding-block: 10px; }
+.top h1 { font-size: 24px; }
+.top h1 button { all: unset; cursor: pointer; }
+.top .spacer { flex: 1 1 auto; }
+.me { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.me input { width: 150px; max-width: 40vw; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+.status { font-size: 13px; color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-weight: 600; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+a.btn { text-decoration: none; color: inherit; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.danger { color: var(--bad); }
+
+main { padding-block: 20px 48px; display: grid; gap: 24px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.muted { color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* Lobby */
+.field { display: grid; gap: 4px; }
+.field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.field input, .field select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); width: 100%; }
+form.create { display: grid; gap: 12px; }
+form.create h2 { font-size: 20px; }
+.battles { display: grid; gap: 10px; }
+.lobby { display: grid; gap: 26px; max-width: 900px; margin: 0 auto; width: 100%; }
+.lobby > .rules { margin-top: -14px; padding: 12px 16px; }
+.lsec { display: grid; gap: 10px; min-width: 0; }
+.lhead { display: flex; align-items: center; gap: 10px; }
+.lhead h2 { font-size: 22px; }
+.lhead .count { font-size: 12px; font-weight: 800; min-width: 24px; text-align: center; padding: 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill.yourturn { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); animation: bob 1.2s ease-in-out infinite; }
+.pill.winner { border-color: var(--sc); }
+.pill.winner .dot { background: var(--sc); }
+.past .battle-item { padding: 10px 14px; }
+.past h3 { font-size: 16px; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; }
+.create-card { padding: 16px 18px; }
+.create-note { margin: 0; font-size: 13px; }
+@media (min-width: 760px) {
+  form.create { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr) auto; align-items: end; column-gap: 12px; }
+  form.create h2, form.create .create-note, form.create .err { grid-column: 1 / -1; }
+  form.create .create-go { height: 40px; }
+}
+.battle-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.battle-item h3 { font-size: 18px; }
+.battle-item .players { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
+.pill.live { border-color: var(--good); color: var(--good); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sc, var(--muted)); flex: none; }
+.empty { padding: 28px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
+
+/* Battle header */
+.bhead { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.bhead h2 { font-size: 28px; }
+.seats { display: flex; flex-wrap: wrap; gap: 8px; }
+.seat { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--sc); background: var(--surface); }
+.seat b { font-weight: 700; }
+.seat-name { width: 130px; max-width: 40vw; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); font-weight: 700; }
+.seat .you { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--sc); }
+
+/* Turn order */
+.order { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; align-items: center; }
+.order .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
+.oslot { flex: none; display: grid; justify-items: center; gap: 2px; padding: 4px; border-radius: 8px; border: 2px solid transparent; background: var(--surface); font-size: 10px; width: 64px; }
+.oslot.now { border-color: var(--sc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc) 25%, transparent); }
+.oslot.done { opacity: .35; }
+.oslot span { max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Field */
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.team { background: var(--surface); border: 1px solid var(--line); border-top: 5px solid var(--sc); border-radius: 12px; padding: 12px; display: grid; gap: 10px; align-content: start; }
+.team h3 { font-size: 18px; display: flex; gap: 8px; align-items: center; }
+.team h3 .you { font-family: var(--font-body); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--sc); }
+.unit { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 10px; align-items: center; padding: 8px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface-2); position: relative; text-align: left; width: 100%; }
+.unit.active { border-color: var(--sc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc) 25%, transparent); }
+.unit.ko { opacity: .4; filter: grayscale(1); }
+.unit.targetable { cursor: pointer; border-style: dashed; border-color: var(--accent); }
+.unit.targetable:hover { background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
+.unit .nm { font-family: var(--font-display); font-size: 16px; line-height: 1.1; }
+.unit .sub { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 3px; }
+.hp { margin-top: 6px; display: grid; gap: 2px; }
+.hpbar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.hpbar i { display: block; height: 100%; background: var(--good); transition: width .4s ease; }
+.hpbar i.mid { background: var(--warn); } .hpbar i.low { background: var(--bad); }
+.hp small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.type { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--chip-ink); background: var(--tc, var(--muted)); white-space: nowrap; }
+.tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; background: var(--surface); border: 1px solid var(--line); white-space: nowrap; }
+.tag.bad { color: var(--bad); border-color: currentColor; }
+.tag.up { color: var(--good); } .tag.down { color: var(--bad); }
+.unit .tgt { position: absolute; right: 8px; top: 8px; font-size: 11px; font-weight: 700; color: var(--accent); }
+
+/* Picture crops */
+.thumb { display: block; background-repeat: no-repeat; background-color: var(--surface); border-radius: 6px; margin: 0 auto; }
+.thumb.none { display: grid; place-items: center; color: var(--muted); font-size: 10px; border: 1px dashed var(--line); }
+
+/* Action bar */
+.moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.move { text-align: left; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface-2); cursor: pointer; display: grid; gap: 4px; }
+.move[aria-pressed="true"] { border-color: var(--accent); }
+.move:disabled { opacity: .5; cursor: default; }
+.move b { font-size: 15px; }
+.move .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.move .eff { font-size: 13px; }
+.hint { font-size: 14px; font-weight: 600; }
+
+/* Log */
+.log { max-height: 420px; overflow: auto; display: grid; gap: 2px; font-size: 13.5px; }
+.log div { padding: 2px 0; }
+.log .round { font-family: var(--font-display); font-size: 15px; margin-top: 8px; color: var(--muted); }
+.log .move { all: unset; display: block; font-weight: 700; padding-top: 4px; }
+.log .ko { color: var(--bad); font-weight: 700; }
+.log .win { font-family: var(--font-display); font-size: 18px; color: var(--accent); }
+.log .heal { color: var(--good); }
+.log .ab { color: var(--t-shadow); }
+.log .miss { color: var(--muted); font-style: italic; }
+
+/* Draft */
+.pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.pcard { display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; align-items: start; }
+.pcard .nm { font-family: var(--font-display); font-size: 16px; line-height: 1.1; }
+.pcard .stats { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.pcard details { font-size: 12.5px; margin-top: 4px; }
+.pcard details summary { cursor: pointer; color: var(--muted); }
+.pcard .pickbtn { margin-top: 6px; }
+.picks { display: grid; gap: 8px; }
+.banner { background: var(--surface); border: 2px solid var(--sc, var(--accent)); border-radius: 12px; padding: 18px; text-align: center; display: grid; gap: 8px; justify-items: center; }
+.banner h2 { font-size: 30px; }
+.confirm { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.err { color: var(--bad); font-size: 13px; }
+details.rules summary { cursor: pointer; font-weight: 600; }
+details.rules ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+.pcard.cant { opacity: .55; }
+.matchup { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.typechart summary { cursor: pointer; font-weight: 700; }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px 14px; margin-top: 10px; }
+.trow { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.trow .arrow { font-size: 12px; color: var(--muted); }
+.trow .who { display: inline-flex; gap: 3px; margin-left: auto; }
+.move.maxmove { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
+.move.maxmove b { font-family: var(--font-display); font-size: 17px; color: var(--accent); }
+.tag.maxtag { color: var(--accent); border-color: currentColor; }
+.log .maxline { color: var(--accent); }
+.unit { overflow: visible; }
+.float { position: absolute; right: 12px; top: -6px; font-family: var(--font-display); font-size: 22px; font-weight: 700; pointer-events: none; animation: floatup 1.1s ease-out forwards; }
+.float.dmg { color: var(--bad); } .float.heal { color: var(--good); }
+@keyframes floatup { from { transform: translateY(6px); opacity: 1; } to { transform: translateY(-28px); opacity: 0; } }
+.unit.hit { animation: shake .4s; }
+@keyframes shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+#pop { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 30; }
+.popmsg { font-family: var(--font-display); font-weight: 700; font-size: clamp(34px, 8vw, 72px); padding: 8px 24px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); border: 3px solid currentColor; animation: popin 1.3s ease-out forwards; text-align: center; max-width: calc(100vw - 32px); }
+.popmsg.ko { color: var(--bad); } .popmsg.crit { color: var(--warn); } .popmsg.super { color: var(--good); }
+.popmsg.miss { color: var(--muted); } .popmsg.max, .popmsg.win { color: var(--accent); }
+@keyframes popin { 0% { transform: scale(.4); opacity: 0; } 15% { transform: scale(1.08); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1.04); } }
+.linkbtn { all: unset; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.linkbtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.seats.compact .seat { padding: 4px 10px; font-size: 14px; }
+.meta .short { display: none; }
+.turnbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--surface); border: 2px solid var(--sc); border-radius: 12px; padding: 10px 14px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+.tb-head { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: center; }
+.tb-name { font-family: var(--font-display); font-size: 20px; line-height: 1.1; }
+.tb-sub { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tb-sub .dot { background: var(--sc); }
+.tb-wait { margin: 0; color: var(--muted); }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
+.steps li { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.steps li.on { background: var(--sc); border-color: var(--sc); color: var(--chip-ink); }
+.steps li.done { color: var(--ink); }
+.tb-step2 { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.tb-hint { font-size: 13px; color: var(--muted); }
+.move .impact { font-size: 12.5px; font-weight: 700; color: var(--ink); border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 2px; }
+.hpbar { display: flex; }
+.hpbar i.proj { background: repeating-linear-gradient(135deg, var(--bad) 0 4px, color-mix(in srgb, var(--bad) 35%, transparent) 4px 8px); }
+.pv { margin-top: 6px; display: grid; gap: 3px; font-size: 13px; }
+.pv-main b { font-size: 14px; }
+.pv-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+.badge.ko { color: var(--bad); } .badge.ko.maybe { color: var(--warn); }
+.badge.good { color: var(--good); } .badge.weak { color: var(--muted); }
+.pv-notes { font-size: 11.5px; color: var(--muted); }
+@media (max-width: 640px) {
+  /* Top bar: one tight row, not pinned, so the game gets the screen */
+  .top { position: static; }
+  .top .wrap { gap: 6px 8px; padding-block: 8px; }
+  .top h1 { font-size: 19px; width: 100%; }
+  .top .spacer { display: none; }
+  .me { flex: 1 1 auto; min-width: 0; }
+  .me label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .me input { width: 100%; max-width: none; }
+  .status { font-size: 12px; }
+  main { padding-block: 12px 32px; gap: 16px; }
+  /* Lobby: existing battles first */
+  .bhead h2 { font-size: 22px; }
+  .seats { gap: 6px; }
+  .seat-name { width: 110px; }
+  /* Field: compact fighter cards */
+  .field-grid { gap: 10px; }
+  .team { padding: 8px; gap: 6px; }
+  .team h3 { font-size: 15px; flex-wrap: wrap; }
+  .unit { grid-template-columns: 46px minmax(0,1fr); gap: 8px; padding: 6px 8px; }
+  .unit .nm { font-size: 14px; }
+  .unit .sub { gap: 3px; margin-top: 2px; }
+  .hp { margin-top: 4px; }
+  .hpbar { height: 6px; }
+  .tag { font-size: 10px; padding: 0 4px; }
+  .type { font-size: 10px; padding: 0 6px; }
+  .oslot { width: 50px; padding: 3px; }
+  .oslot span { max-width: 46px; font-size: 9px; }
+  /* Action bar: two columns of short move buttons */
+  .turnbar { padding: 8px 10px; gap: 6px; border-radius: 0 0 12px 12px; border-top: 0; margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); }
+  .turnbar.step1 { max-height: 62vh; overflow: auto; }
+  .tb-name { font-size: 16px; }
+  .tb-sub { font-size: 12px; }
+  .steps li { font-size: 10.5px; padding: 2px 6px; }
+  .move .impact { font-size: 11.5px; }
+  .moves { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .move { padding: 7px 8px; gap: 2px; }
+  .move b { font-size: 13.5px; }
+  .move.maxmove b { font-size: 14px; }
+  .move .type { display: none; }
+  .move .eff { font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .meta .long { display: none; } .meta .short { display: inline; }
+  .pv { font-size: 12px; } .pv-main b { font-size: 13px; }
+  /* Draft: whose pick stays visible while scrolling the fighters */
+  .draft-banner { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 3; padding: 8px 12px; gap: 2px; box-shadow: var(--shadow); }
+  .draft-banner h2 { font-size: 20px; }
+  .banner h2 { font-size: 24px; }
+  .picks { gap: 4px; }
+  .pool { grid-template-columns: 1fr; gap: 8px; }
+  .pcard { grid-template-columns: 56px minmax(0,1fr); padding: 8px; gap: 8px; }
+  .log { max-height: none; }
+}
+
+/* ================= Battle screen ================= */
+body.in-battle { margin: 0; overflow: hidden; overscroll-behavior: none; }
+body.in-battle .top { display: none; }
+body.in-battle #app { max-width: none; padding: 0; display: block; }
+.bscreen { height: 100vh; height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--arena-bg); overflow: hidden; }
+.bs-head { display: flex; gap: 8px; align-items: center; padding: 6px max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px)); background: var(--surface); border-bottom: 1px solid var(--line); z-index: 3; }
+.bs-title { flex: 1 1 auto; min-width: 0; display: grid; line-height: 1.15; }
+.bs-title b { font-family: var(--font-display); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-title span { font-size: 12px; color: var(--muted); }
+.iconbtn { min-width: 44px; }
+
+.arena { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; perspective: 900px; outline: none; }
+.arena.dragging { cursor: grabbing; }
+.arena:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); }
+.sky { position: absolute; inset: 0 0 45% 0; background: linear-gradient(var(--arena-bg2), var(--arena-bg)); }
+.floor { position: absolute; left: -60%; right: -60%; top: 38%; bottom: -30%; background-image: radial-gradient(var(--arena-dot) 3px, transparent 3.5px); background-size: 34px 34px; transform: perspective(420px) rotateX(58deg); transform-origin: top center; }
+.ringline { position: absolute; left: -20%; right: -20%; top: 52%; height: 70%; border: 3px solid var(--arena-line); border-radius: 50%; pointer-events: none; }
+.fig { position: absolute; left: 0; top: 0; width: max(96px, calc(var(--fig) * 1.0)); display: grid; justify-items: center; will-change: transform; }
+.figpic { width: var(--fig); height: var(--fig); display: flex; align-items: flex-end; justify-content: center; filter: drop-shadow(0 6px 6px rgba(0,0,0,.28)); transition: filter .2s, transform .2s; }
+.fill { display: block; width: 100%; height: 100%; overflow: hidden; }
+.fill.none { width: 60%; height: 60%; display: grid; place-items: center; border: 1px dashed var(--line); color: var(--muted); }
+.base { width: calc(var(--fig) * .85); height: 14px; margin-top: -8px; border-radius: 50%; background: color-mix(in srgb, var(--sc) 55%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--sc) 70%, transparent); }
+.plate { margin-top: 4px; width: calc(var(--fig) * 1.0); max-width: 180px; min-width: 96px; background: var(--surface); border: 2px solid var(--sc); border-radius: 10px; padding: 4px 7px; display: grid; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+.pname { font-family: var(--font-display); font-size: 14px; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate .hpbar { height: 6px; }
+.prow { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.hpn { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ptags { display: flex; flex-wrap: wrap; gap: 2px; }
+.ptags .tag { font-size: 9.5px; padding: 0 4px; }
+.turnmark { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 2; background: var(--sc); color: var(--chip-ink); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; animation: bob 1.2s ease-in-out infinite; }
+.turnmark.selmark { background: var(--accent); color: var(--accent-ink); }
+@keyframes bob { 50% { transform: translateX(-50%) translateY(-3px); } }
+.fig.active .plate { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc) 35%, transparent), 0 4px 10px rgba(0,0,0,.18); }
+.fig.tgt .base { box-shadow: 0 0 0 3px var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+.fig.tgt { cursor: pointer; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 35%, transparent); } }
+.fig.aim .base { box-shadow: 0 0 0 5px var(--accent); }
+/* Team banners hanging above each team's stretch of the ring */
+.tban { position: absolute; left: 0; top: 0; pointer-events: none; display: grid; justify-items: center; color: color-mix(in srgb, var(--ink) 70%, transparent); filter: drop-shadow(0 8px 10px rgba(0,0,0,.28)); will-change: transform; }
+.tban-cords { width: 120px; height: 26px; display: block; margin-bottom: -2px; }
+.tban-rod { width: 150px; height: 8px; border-radius: 4px; position: relative; z-index: 1;
+  background: linear-gradient(180deg, #f6e3a8, #c99a3c 55%, #7d5a1b); box-shadow: 0 2px 3px rgba(0,0,0,.35); }
+.tban-rod::before, .tban-rod::after { content: ""; position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff3c4, #d8a640 50%, #6b4a12); }
+.tban-rod::before { left: -7px; } .tban-rod::after { right: -7px; }
+.tban-flag { position: relative; margin-top: -3px; width: 136px; padding: 9px 12px 22px; text-align: center; transform-origin: top center; animation: sway 3.4s ease-in-out infinite;
+  background:
+    linear-gradient(115deg, transparent 0 35%, rgba(255,255,255,.28) 45%, transparent 56%) no-repeat,
+    repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, color-mix(in srgb, var(--sc) 70%, #fff) 0%, var(--sc) 38%, color-mix(in srgb, var(--sc) 62%, #000) 100%);
+  background-size: 260% 100%, auto, auto; background-position: 140% 0, 0 0, 0 0;
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%); }
+.tban-flag::before { content: ""; position: absolute; inset: 4px 6px 16px; border: 1.5px solid rgba(255,255,255,.45); clip-path: polygon(0 0, 100% 0, 100% 84%, 50% 100%, 0 84%); }
+.tban-name { font-family: var(--font-display); font-size: 19px; font-weight: 700; line-height: 1.05; color: #fff; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 0 rgba(0,0,0,.35), 0 0 10px rgba(0,0,0,.25); }
+.tban-sub { margin-top: 3px; font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.92); text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.tban.turn { filter: drop-shadow(0 0 14px var(--sc)) drop-shadow(0 8px 10px rgba(0,0,0,.28)); }
+.tban.turn .tban-flag { animation: sway 3.4s ease-in-out infinite, shine 2.4s ease-in-out infinite; }
+.tban.won .tban-flag { animation: sway 1.6s ease-in-out infinite, shine 1.6s ease-in-out infinite; }
+.tban.out { filter: grayscale(1) drop-shadow(0 6px 8px rgba(0,0,0,.2)); opacity: .55; }
+@keyframes sway { 0%, 100% { transform: rotateZ(-2.2deg) rotateX(4deg); } 50% { transform: rotateZ(2.2deg) rotateX(-2deg); } }
+@keyframes shine { 0% { background-position: 140% 0, 0 0, 0 0; } 60%, 100% { background-position: -40% 0, 0 0, 0 0; } }
+.actbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border-top: 1px dashed var(--line); padding-top: 8px; }
+.actinfo { font-size: 13px; color: var(--muted); min-width: 0; }
+.actinfo b { color: var(--ink); } .actinfo .tname { color: var(--accent); } .actinfo .dimp { font-weight: 700; color: var(--ink); }
+.actbar .btn.primary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stripmove { display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+.stripeff { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stripsub .tname { color: var(--accent); }
+.strip .btn.primary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.fig.sel .plate { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 40%, transparent); }
+.fig.sel .figpic { transform: translateY(-6px); filter: drop-shadow(0 10px 8px rgba(0,0,0,.35)); }
+.fig.dim .figpic { filter: grayscale(.7) brightness(.85); }
+.fig.dim .plate { opacity: .7; }
+.fig.ko .figpic { filter: grayscale(1); opacity: .55; transform: rotate(-14deg) translateY(10%); }
+.fig.ko .plate { opacity: .6; }
+.fig.nope { animation: shake .35s; }
+.pvtag { position: absolute; top: 4px; right: 0; z-index: 2; background: var(--surface); color: var(--ink); border: 2px solid var(--accent); border-radius: 10px; padding: 1px 7px; font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; box-shadow: 0 3px 8px rgba(0,0,0,.2); }
+.pvtag small { font-size: 10px; font-weight: 600; color: var(--muted); }
+.pvtag b { margin-left: 4px; color: var(--bad); font-size: 12px; } .pvtag b.x2 { color: var(--good); }
+.pvtag.ko { border-color: var(--bad); }
+.arena-pill { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 300; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 13px; box-shadow: var(--shadow); pointer-events: none; white-space: nowrap; }
+.phase-B .arena-pill { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.radar { all: unset; position: absolute; top: 8px; right: max(8px, env(safe-area-inset-right, 0px)); z-index: 300; width: 60px; height: 60px; border-radius: 50%; background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: var(--shadow); cursor: pointer; }
+.radar:focus-visible { outline: 3px solid var(--accent); }
+.radar circle.rt { animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.chev { position: absolute; top: 46%; z-index: 300; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 88%, transparent); font-size: 26px; line-height: 1; cursor: pointer; box-shadow: var(--shadow); color: var(--ink); }
+.chev.left { left: max(6px, env(safe-area-inset-left, 0px)); } .chev.right { right: max(6px, env(safe-area-inset-right, 0px)); }
+.swipehint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 300; font-size: 12px; font-weight: 700; color: var(--muted); background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 3px 10px; border-radius: 999px; pointer-events: none; transition: opacity .4s; animation: nudge 1.6s ease-in-out 3; }
+.swipehint.gone { opacity: 0; }
+@keyframes nudge { 25% { transform: translateX(calc(-50% - 6px)); } 75% { transform: translateX(calc(-50% + 6px)); } }
+.fig .float { position: absolute; top: -6px; left: 50%; right: auto; z-index: 4; font-size: 30px; text-shadow: 0 2px 0 var(--surface), 0 0 6px var(--surface); animation: floatfig 1.2s ease-out forwards; }
+@keyframes floatfig { from { transform: translate(-50%, 10px); opacity: 1; } to { transform: translate(-50%, -34px); opacity: 0; } }
+.fig.hit .figpic { animation: shake .4s; }
+
+/* control panel */
+.ctl { background: var(--surface); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0,0,0,.14); padding: 10px max(12px, env(safe-area-inset-right, 0px)) 12px max(12px, env(safe-area-inset-left, 0px)); z-index: 4; }
+.ctl-in { max-width: 760px; margin: 0 auto; display: grid; gap: 8px; animation: rise .18s ease-out; }
+@keyframes rise { from { transform: translateY(8px); opacity: .4; } to { transform: none; opacity: 1; } }
+.th { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.thpic { width: 40px; height: 40px; display: flex; align-items: flex-end; justify-content: center; }
+.thpic.big { width: 64px; height: 64px; }
+.thname { font-family: var(--font-display); font-size: 19px; line-height: 1.1; display: flex; align-items: center; gap: 6px; }
+.thname .dot { background: var(--sc); }
+.thsub { font-size: 12.5px; color: var(--muted); }
+.mgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mv { text-align: left; padding: 7px 9px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface-2); cursor: pointer; display: grid; gap: 2px; min-height: 64px; min-width: 0; }
+.mv[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
+.mv:disabled { opacity: .5; cursor: default; }
+.mvname { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.mvname b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mvname .tag { font-size: 9.5px; padding: 0 4px; flex: none; }
+.mv.maxmove b { font-family: var(--font-display); color: var(--accent); }
+.mvmeta { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mvimp { font-size: 11.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.details { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border-top: 1px dashed var(--line); padding-top: 8px; }
+.dtext { font-size: 13px; }
+.dimp { font-weight: 700; margin-top: 2px; }
+.pickhint { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+.actrow { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.btn.big { padding: 11px 18px; font-size: 16px; min-height: 46px; }
+.strip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.stripinfo { min-width: 0; display: grid; gap: 2px; font-size: 14px; }
+.stripinfo .tag { margin-left: 6px; }
+.stripsub { font-size: 13px; color: var(--muted); }
+.stripsub b { color: var(--ink); }
+.res { display: grid; gap: 2px; font-size: 13.5px; }
+.res .r-move, .res .r-max { font-weight: 700; } .res .r-max { color: var(--accent); }
+.res .r-ko { color: var(--bad); font-weight: 700; } .res .r-heal { color: var(--good); } .res .r-miss { color: var(--muted); font-style: italic; } .res .r-ab { color: var(--t-shadow); }
+.res .next { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.waitline { margin: 0; font-size: 13px; color: var(--muted); }
+.donebox { display: grid; gap: 6px; justify-items: center; text-align: center; }
+.donebox .thname { font-size: 26px; color: var(--sc); }
+
+/* sheet (log, players, fighter details) */
+.sheet-wrap { position: fixed; inset: 0; z-index: 40; background: rgba(10,12,18,.5); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: min(760px, 100%); max-height: 82vh; overflow: auto; border-radius: 16px 16px 0 0; padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 12px; animation: rise .2s ease-out; }
+.sh-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.sh-head > .thname:first-child { grid-column: 1 / 3; }
+.sh-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0; text-align: center; background: var(--surface-2); border-radius: 8px; padding: 6px; }
+.sh-stats dt { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.sh-stats dd { margin: 0; font-weight: 700; }
+.sheet p { margin: 0; font-size: 14px; }
+
+@media (max-width: 640px) {
+  .mgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .details { grid-template-columns: 1fr; }
+  .actbar { grid-template-columns: 1fr; gap: 6px; }
+  .actbar .btn.primary { width: 100%; }
+  .details .actrow .btn { width: 100%; }
+  .strip { grid-template-columns: 1fr; }
+  .strip .actrow { display: grid; grid-template-columns: 1fr 1.4fr; }
+  .thname { font-size: 17px; }
+  .steps li { font-size: 10.5px; padding: 2px 6px; }
+  .bs-head .btn.small { padding: 5px 8px; font-size: 12.5px; }
+}
+@media (max-height: 640px) {
+  .mvmeta { display: none; }
+  .mv { min-height: 52px; padding: 5px 8px; }
+  .th { grid-template-columns: 32px minmax(0, 1fr) auto; } .thpic { width: 32px; height: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill.yourturn, .turnmark, .fig.tgt .base, .radar circle.rt, .swipehint, .ctl-in, .sheet, .tban-flag, .tban.turn .tban-flag, .tban.won .tban-flag { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hpbar i { transition: none; }
+  .unit.hit { animation: none; }
+  .float { animation: none; opacity: 0; }
+  .popmsg { animation: fadeonly 1.3s forwards; }
+  @keyframes fadeonly { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+}
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <h1><button type="button" id="homeBtn">Bead Battle Arena</button></h1>
+    <span class="spacer"></span>
+    <div class="me"><label for="myName">Your name</label><input id="myName" maxlength="24" placeholder="Type your name"></div>
+    <button class="btn small" type="button" id="soundBtn" aria-pressed="false">Sound off</button>
+    <span class="status" id="status" role="status">Connecting…</span>
+  </div>
+</div>
+
+<main class="wrap" id="app"></main>
+<div id="pop" aria-live="assertive"></div>
+
+<script src="fighters.js"></script>
+<script src="engine.js"></script>
+<script>
+(() => {
+  const E = window.BattleEngine;
+  const IW = 2016, IH = 1512;
+  const PHOTO = window.BEAD_PHOTO_DATA ? (() => {
+    const bin = atob(window.BEAD_PHOTO_DATA), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  })() : "perler-bead-weapons.jpeg";
+  const PIECES = {"P1":[22.62,15.21,7.94,7.54],"P2":[31.55,11.9,6.94,10.98],"P3":[38.99,6.88,7.64,14.55],"P4":[48.41,8.6,6.35,14.95],"P5":[56.35,7.94,6.35,13.89],"P6":[68.25,9.26,6.15,11.24],"P7":[81.65,5.03,6.45,14.81],"P8":[90.48,1.59,5.56,15.87],"P9":[12.4,30.16,7.44,15.48],"P10":[20.14,26.46,8.83,15.61],"P11":[33.53,26.46,4.17,13.23],"P12":[40.18,27.78,5.65,11.64],"P13":[49.6,29.76,4.46,13.89],"P14":[58.04,25.4,5.65,12.7],"P15":[66.87,25.79,9.03,7.54],"P16":[80.85,24.47,6.25,14.81],"P17":[90.77,23.54,5.46,15.48],"P18":[11.41,51.85,6.94,16.27],"P19":[22.82,53.57,5.46,7.94],"P20":[34.23,47.62,5.46,15.61],"P21":[41.17,52.65,4.46,10.19],"P22":[47.82,47.35,7.94,20.11],"P23":[56.55,44.31,4.96,10.19],"P24":[64.98,40.34,6.25,15.87],"P25":[79.86,41.27,6.45,14.29],"P26":[90.28,41.67,5.16,12.57],"P27":[67.46,57.14,7.74,16.93],"P28":[76.88,60.19,10.42,10.19],"P29":[89.29,56.22,7.74,13.89],"P30":[9.42,69.44,7.64,16.53],"P31":[19.84,74.07,6.94,9.26],"P32":[28.27,68.52,6.94,21.43],"P33":[34.23,74.07,8.93,13.23],"P34":[45.63,69.44,5.95,15.21],"P35":[54.56,62.83,6.94,17.2],"P36":[16.87,85.98,5.46,14.02],"P37":[25.3,88.62,10.22,11.38],"P38":[35.71,88.62,8.43,7.94],"P39":[48.41,84.66,12.3,7.28],"P40":[60.02,83.07,6.25,9.52],"P41":[68.45,78.31,13.1,9.66],"P42":[82.14,77.38,4.17,11.24],"P43":[87.3,74.74,6.94,11.9]};
+  const STAT_SHORT = { attack: "Atk", defense: "Def", speed: "Spd", special: "Spc", acc: "Acc", eva: "Eva" };
+  const STATUS_SHORT = { poison: "Poisoned", burn: "Burned", paralyze: "Paralyzed", freeze: "Frozen" };
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "style") n.style.cssText = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat(Infinity)) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
+    return n;
+  };
+  const seatColor = i => `var(--s${i % 6})`;
+  const typeChip = t => el("span", { class: "type", style: `--tc:var(--t-${String(t).toLowerCase()}, var(--muted))` }, t);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  function thumb(pid, size, label) {
+    const box = PIECES[pid];
+    if (!box) return el("span", { class: "thumb none", style: `width:${size}px;height:${size}px` }, "?");
+    const [x, y, w, h] = box;
+    const pw = w * IW / 100, ph = h * IH / 100, s = Math.min(size / pw, size / ph);
+    return el("span", { class: "thumb", role: "img", "aria-label": label || pid, style: [
+      `width:${Math.round(pw * s)}px`, `height:${Math.round(ph * s)}px`, `background-image:url("${PHOTO}")`,
+      `background-size:${(10000 / w).toFixed(3)}% ${(10000 / h).toFixed(3)}%`,
+      `background-position:${(x / (100 - w) * 100).toFixed(3)}% ${(y / (100 - h) * 100).toFixed(3)}%`].join(";") });
+  }
+
+  const small = () => window.matchMedia("(max-width: 640px)").matches;
+  try { window.matchMedia("(max-width: 640px)").addEventListener("change", () => render()); } catch {}
+  // ---------- state ----------
+  let db = null, myId = null, canWrite = true;
+  let fighters = [], battles = [], fightersLoaded = false, battlesLoaded = false;
+  let openDetails = new Set();
+  let ui = { aim: false, target: null, sheet: null, result: null, chartOpen: !window.matchMedia("(max-width: 640px)").matches, logAll: false, renaming: null, scrollToTarget: false, move: null, draftType: "", draftQ: "", busy: false, err: "", confirmDelete: null, confirmTake: null, seatNames: {}, seatEdits: {} };
+  const tabId = Math.random().toString(36).slice(2, 8);
+
+  $("#myName").value = store.get("bb-name") || "";
+  $("#myName").addEventListener("input", e => store.set("bb-name", e.target.value.trim()));
+  const myName = () => $("#myName").value.trim();
+
+  const route = () => { const m = /^#b-([A-Za-z0-9-]+)$/.exec(location.hash); return m ? m[1] : null; };
+  window.addEventListener("hashchange", () => { ui.move = null; ui.err = ""; render(); });
+  $("#homeBtn").addEventListener("click", () => { location.hash = ""; });
+
+  // ---------- writes ----------
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function mutate(bid, fn) {
+    const ref = db.collection("battles").doc(bid);
+    for (let attempt = 0; attempt < 8; attempt++) {
+      let got = true;
+      try { got = (await ref.acquire({ holder: `${myId}:${tabId}`, ttlMs: 5000 })).acquired; }
+      catch (e) { if (!["capability_removed", "capability_disabled"].includes(e && e.code)) throw e; }
+      if (!got) { await sleep(250 + Math.random() * 500); continue; }
+      const snap = await ref.get();
+      if (!snap.exists) throw new Error("This battle no longer exists.");
+      const st = structuredClone(snap.data());
+      fn(st);
+      st.rev = (st.rev || 0) + 1;
+      st.updated = Date.now();
+      await ref.set(st);
+      return;
+    }
+    throw new Error("Someone else is moving right now. Try again.");
+  }
+  async function run(fn) {
+    if (ui.busy) return;
+    ui.busy = true; ui.err = ""; render();
+    try { await fn(); }
+    catch (e) {
+      ui.err = e && e.code === "invalid_argument" ? "You can watch but not play. Ask the owner for Contributor access to this page."
+        : e && e.code === "quota_exceeded" ? "The battle list is full. Delete some old battles first."
+        : (e && e.message) || "That didn't work. Check your connection and try again.";
+    }
+    ui.busy = false; render();
+  }
+  function needName() {
+    if (myName()) return false;
+    ui.err = "Type your name at the top first."; render(); $("#myName").focus(); return true;
+  }
+
+  // ---------- views ----------
+  function render() {
+    if (view.dragging) { view.pendingRender = true; return; }
+    const ae = document.activeElement, focusId = ae && ae.id && ae.tagName === "INPUT" ? ae.id : null;
+    const caret = focusId ? [ae.selectionStart, ae.selectionEnd] : null;
+    draw();
+    if (focusId) { const n = document.getElementById(focusId); if (n && n !== ae) { n.focus(); try { n.setSelectionRange(caret[0], caret[1]); } catch {} } }
+  }
+  // ---------- hit effects ----------
+  const seen = {};            // battle id -> { seq, hp: {unitId: hp} }
+  let soundOn = store.get("bb-sound") === "1";
+  let audio = null;
+  function beep(kind) {
+    if (!soundOn) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const now = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+      const tones = { hit: [180, 90, 0.12], crit: [520, 880, 0.18], super: [330, 660, 0.2], ko: [220, 55, 0.45], miss: [600, 400, 0.08], max: [200, 1000, 0.35], heal: [440, 660, 0.15] };
+      const [a, b, d] = tones[kind] || tones.hit;
+      o.type = kind === "ko" || kind === "hit" ? "square" : "triangle";
+      o.frequency.setValueAtTime(a, now); o.frequency.exponentialRampToValueAtTime(b, now + d);
+      g.gain.setValueAtTime(0.08, now); g.gain.exponentialRampToValueAtTime(0.0001, now + d);
+      o.connect(g).connect(audio.destination); o.start(now); o.stop(now + d + 0.02);
+    } catch {}
+  }
+  function pop(text, kind) {
+    const box = $("#pop");
+    const n = el("div", { class: `popmsg ${kind}` }, text);
+    box.replaceChildren(n);
+    setTimeout(() => { if (n.parentNode) n.remove(); }, 1400);
+  }
+  function takeFresh(st) {
+    const prev = seen[st.id];
+    const hp = {}; st.units.forEach(u => { hp[u.id] = u.hp; });
+    seen[st.id] = { seq: st.seq || 0, hp };
+    if (!prev || !(st.status === "battle" || st.status === "done")) return null;   // first look: no replay of old events
+    const fresh = st.log.filter(e => (e.s || 0) > prev.seq);
+    if (!fresh.length) return null;
+    const diffs = st.units.map(u => ({ id: u.id, diff: prev.hp[u.id] == null ? 0 : u.hp - prev.hp[u.id] })).filter(d => d.diff);
+    return { fresh, diffs };
+  }
+  function noteResult(st, fx) {
+    if (!fx || st.status !== "battle") return;
+    const lines = fx.fresh.filter(e => e.k !== "round" && e.k !== "sys" && e.k !== "pick").slice(0, 5);
+    if (!lines.length) return;
+    ui.result = { bid: st.id, lines, until: Date.now() + 1900 };
+    setTimeout(() => render(), 1950);
+  }
+  function playEffects(st, fx) {
+    if (!fx) return;
+    const { fresh, diffs } = fx;
+    let biggest = null;
+    for (const d of diffs) {
+      const card = document.querySelector(`.fig[data-uid="${d.id}"]`); if (!card) continue;
+      if (d.diff < 0) { card.classList.remove("hit"); void card.offsetWidth; card.classList.add("hit"); if (!biggest || d.diff < biggest.diff) biggest = d; }
+      card.append(el("span", { class: `float ${d.diff < 0 ? "dmg" : "heal"}` }, d.diff < 0 ? String(d.diff) : "+" + d.diff));
+    }
+    if (biggest) rotateTo(ringIndex(st, biggest.id), 380);   // keep the action on screen
+    const has = re => fresh.some(e => re.test(e.t));
+    if (st.status === "done") { pop(st.winner >= 0 ? `${st.seats[st.winner].name} wins!` : "Draw!", "win"); beep("max"); }
+    else if (has(/is knocked out/)) { pop("KNOCKED OUT!", "ko"); beep("ko"); }
+    else if (fresh.some(e => e.k === "max")) { pop("MAX!", "max"); beep("max"); }
+    else if (has(/critical hit/)) { pop("CRITICAL HIT!", "crit"); beep("crit"); }
+    else if (has(/super effective/)) { pop("SUPER EFFECTIVE!", "super"); beep("super"); }
+    else if (has(/misses!|dodges!/)) { pop("MISS!", "miss"); beep("miss"); }
+    else if (has(/takes \d+ damage/)) beep("hit");
+    else if (has(/recovers/)) beep("heal");
+  }
+  const soundBtn = $("#soundBtn");
+  const drawSound = () => { soundBtn.textContent = soundOn ? "Sound on" : "Sound off"; soundBtn.setAttribute("aria-pressed", String(soundOn)); };
+  function toggleSound() { soundOn = !soundOn; store.set("bb-sound", soundOn ? "1" : "0"); drawSound(); if (soundOn) beep("heal"); }
+  soundBtn.addEventListener("click", toggleSound);
+  drawSound();
+
+  function draw() {
+    const app = $("#app");
+    const bid = route();
+    if (!db) { app.replaceChildren(el("div", { class: "empty" }, battlesLoaded ? "Sign in to claude.ai to play." : "Loading…")); return; }
+    if (bid) {
+      const st = battles.find(b => b.id === bid);
+      if (!st) { app.replaceChildren(el("div", { class: "empty" }, battlesLoaded ? "This battle wasn't found. It may have been deleted. " : "Loading battle…", el("button", { class: "btn small", type: "button", onclick: () => { location.hash = ""; } }, "Back to battles"))); return; }
+      const isScreen = st.status === "battle" || st.status === "done";
+      document.body.classList.toggle("in-battle", isScreen);
+      let fx = null;
+      if (isScreen) {
+        if (view.bid !== st.id) {
+          view.bid = st.id; view.turnKey = null; view.peeked = false; view.hint = true; ui.sheet = null; ui.result = null;
+          const a = E.activeUnit(st); view.rot = a ? ringIndex(st, a.id) : 0;
+        }
+        const key = `${st.round}:${st.qi}:${st.status}`;
+        if (view.turnKey !== key) { if (view.turnKey !== null) view.rotateToActive = true; view.turnKey = key; ui.move = null; ui.aim = false; ui.target = null; }
+        fx = takeFresh(st);
+        noteResult(st, fx);
+      } else seen[st.id] = undefined;
+      app.replaceChildren(renderBattle(st));
+      const lg = $(".log"); if (lg) lg.scrollTop = 0;
+      if (isScreen) {
+        layoutArena();
+        playEffects(st, fx);
+        const resultOn = ui.result && ui.result.bid === st.id && Date.now() < ui.result.until;
+        if (view.rotateToActive && !resultOn) {
+          view.rotateToActive = false;
+          const a = E.activeUnit(st); if (a) rotateTo(ringIndex(st, a.id));
+        }
+        if (!view.peeked && st.units.length > 3 && !reduceMotion()) {
+          view.peeked = true;
+          const r0 = view.rot;
+          setTimeout(() => { if (!view.dragging && view.hint) { rotateTo(r0 + 0.45, 520); setTimeout(() => { if (!view.dragging) rotateTo(r0, 520); }, 640); } }, 700);
+        }
+      }
+      return;
+    }
+    document.body.classList.remove("in-battle");
+    renderLobby(app);
+  }
+
+  // Lobby: the form stays put across re-renders so typing isn't lost.
+  let lobbyForm = null;
+  const PAST_PAGE = 5;
+  function myTurnIn(b) {
+    if (b.status === "battle") { const a = E.activeUnit(b); return !!a && b.seats[a.seat] && b.seats[a.seat].uid === myId; }
+    if (b.status === "draft") { const seat = E.draftSeat(b); return seat != null && b.seats[seat] && b.seats[seat].uid === myId; }
+    return false;
+  }
+  function renderLobby(app) {
+    if (!lobbyForm) lobbyForm = buildCreateForm();
+    const rank = b => (myTurnIn(b) ? 0 : 3) + ({ battle: 0, draft: 1, lobby: 2 }[b.status] ?? 2);
+    const ongoing = battles.filter(b => b.status !== "done").sort((x, y) => rank(x) - rank(y) || (y.updated || y.created || 0) - (x.updated || x.created || 0));
+    const past = battles.filter(b => b.status === "done").sort((x, y) => (y.updated || y.created || 0) - (x.updated || x.created || 0));
+    const pages = Math.max(1, Math.ceil(past.length / PAST_PAGE));
+    ui.pastPage = Math.min(Math.max(0, ui.pastPage || 0), pages - 1);
+    const pageItems = past.slice(ui.pastPage * PAST_PAGE, (ui.pastPage + 1) * PAST_PAGE);
+
+    const ongoingList = el("div", { class: "battles" });
+    if (!battlesLoaded) ongoingList.append(el("div", { class: "empty" }, "Loading games…"));
+    else if (!ongoing.length) ongoingList.append(el("div", { class: "empty" }, "No games in progress. Create one above."));
+    for (const b of ongoing) ongoingList.append(battleItem(b));
+
+    const pastList = el("div", { class: "battles past" });
+    if (battlesLoaded && !past.length) pastList.append(el("div", { class: "empty" }, "Finished games will show up here."));
+    for (const b of pageItems) pastList.append(pastItem(b));
+    const pager = pages > 1 ? el("div", { class: "pager" },
+      el("button", { class: "btn small", type: "button", disabled: ui.pastPage === 0, onclick: () => { ui.pastPage--; render(); } }, "‹ Newer"),
+      el("span", { class: "muted" }, `Page ${ui.pastPage + 1} of ${pages}`),
+      el("button", { class: "btn small", type: "button", disabled: ui.pastPage >= pages - 1, onclick: () => { ui.pastPage++; render(); } }, "Older ›")) : null;
+
+    const head = (title, n) => el("div", { class: "lhead" }, el("h2", {}, title), battlesLoaded ? el("span", { class: "count" }, String(n)) : null);
+    app.replaceChildren(el("div", { class: "lobby" },
+      el("section", { class: "card create-card" }, lobbyForm),
+      rulesCard(),
+      el("section", { class: "lsec", "aria-label": "Ongoing games" }, head("Ongoing games", ongoing.length), ongoingList),
+      el("section", { class: "lsec", "aria-label": "Past games" }, head("Past games", past.length), pastList, pager)));
+    const errBox = $("#createErr"); if (errBox) errBox.textContent = ui.err;
+  }
+  function buildCreateForm() {
+    const players = el("select", { id: "cPlayers" }, [2, 3, 4, 5, 6].map(n => el("option", { value: n }, `${n} players`)));
+    const team = el("select", { id: "cTeam" },
+      el("optgroup", { label: "Same number of fighters" }, [1, 2, 3, 4, 5].map(n => el("option", { value: "n" + n }, `${n} fighter${n > 1 ? "s" : ""} each`))),
+      el("optgroup", { label: "Points to spend (Common 1 … Legendary 5)" }, [6, 8, 10, 12, 15].map(n => el("option", { value: "p" + n }, `${n} points each`))));
+    team.value = "n3";
+    const name = el("input", { id: "cName", maxlength: 40, placeholder: "e.g. Friday showdown" });
+    const form = el("form", { class: "create", onsubmit: e => {
+      e.preventDefault();
+      if (needName()) return;
+      const p = +players.value, mode = team.value[0], t = +team.value.slice(1);
+      if (mode === "n" && p * t > fighters.length) { ui.err = `Not enough fighters: ${p} players × ${t} needs ${p * t}, and there are ${fighters.length}.`; render(); return; }
+      run(async () => {
+        const id = "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const st = E.newBattle({ id, name: name.value.trim() || `Battle ${battles.length + 1}`, players: p, teamSize: mode === "n" ? t : null, budget: mode === "p" ? t : null, creator: myId, now: Date.now() });
+        st.seats[0] = { name: myName(), uid: myId };
+        await db.collection("battles").doc(id).set(st);
+        name.value = "";
+        location.hash = "#b-" + id;
+      });
+    } },
+      el("h2", {}, "New battle"),
+      el("div", { class: "field" }, el("label", { for: "cName" }, "Battle name"), name),
+      el("div", { class: "field" }, el("label", { for: "cPlayers" }, "Players"), players),
+      el("div", { class: "field" }, el("label", { for: "cTeam" }, "Teams"), team),
+      el("button", { class: "btn primary create-go", type: "submit" }, "Create battle"),
+      el("p", { class: "muted create-note" }, "You take the first seat. Others join from their own device. To play on one screen, type each player\u2019s name into a seat and take it yourself."),
+      el("div", { class: "err", id: "createErr", role: "alert" }));
+    return form;
+  }
+
+  function pastItem(b) {
+    const w = b.winner, when = b.updated || b.created;
+    const del = (b.creator === myId || canWrite === "admin");
+    return el("div", { class: "battle-item pastitem" },
+      el("div", { style: "min-width:0;display:grid;gap:3px" },
+        el("h3", {}, b.name),
+        el("div", { class: "row", style: "gap:6px;font-size:13px" },
+          w >= 0 ? el("span", { class: "pill winner", style: `--sc:${seatColor(w)}` }, el("span", { class: "dot" }), `${b.seats[w].name} won`) : el("span", { class: "pill" }, "Draw"),
+          el("span", { class: "muted" }, `${b.round} round${b.round === 1 ? "" : "s"} · ${b.seats.length} players${when ? " · " + new Date(when).toLocaleDateString([], { day: "numeric", month: "short" }) : ""}`))),
+      el("div", { class: "row", style: "justify-content:flex-end" },
+        el("a", { class: "btn small", href: "#b-" + b.id }, "View"),
+        del ? (ui.confirmDelete === b.id
+          ? el("span", { class: "confirm" }, "Delete?", el("button", { class: "btn small danger", type: "button", onclick: () => run(() => db.collection("battles").doc(b.id).delete()) }, "Yes"), el("button", { class: "btn small", type: "button", onclick: () => { ui.confirmDelete = null; render(); } }, "No"))
+          : el("button", { class: "btn small", type: "button", onclick: () => { ui.confirmDelete = b.id; render(); } }, "Delete")) : null));
+  }
+  function battleItem(b) {
+    const stLabel = { lobby: `Waiting for players · ${b.seats.filter(s => s.uid).length}/${b.seats.length}`, draft: "Picking fighters", battle: `Battling · round ${b.round}`, done: "Finished" }[b.status] || b.status;
+    const mine = b.seats.some(s => s.uid === myId);
+    const yourTurn = myTurnIn(b);
+    const del = (b.creator === myId || canWrite === "admin");
+    return el("div", { class: "battle-item" },
+      el("div", { style: "min-width:0;display:grid;gap:4px" },
+        el("h3", {}, b.name),
+        el("div", { class: "row" }, yourTurn ? el("span", { class: "pill yourturn" }, b.status === "draft" ? "Your pick!" : "Your turn!") : null,
+          el("span", { class: `pill ${b.status === "battle" ? "live" : ""}` }, stLabel), el("span", { class: "muted", style: "font-size:13px" }, teamLabel(b)), mine && !yourTurn ? el("span", { class: "pill" }, "You're in") : null),
+        el("div", { class: "players" }, b.seats.map((s, i) => el("span", { class: "pill", style: `--sc:${seatColor(i)}` }, el("span", { class: "dot" }), s.name || "Open seat")))),
+      el("div", { class: "row", style: "justify-content:flex-end" },
+        el("a", { class: "btn small primary", href: "#b-" + b.id }, b.status === "done" ? "View" : mine ? "Open" : "Watch or join"),
+        del ? (ui.confirmDelete === b.id
+          ? el("span", { class: "confirm" }, "Delete?", el("button", { class: "btn small danger", type: "button", onclick: () => run(() => db.collection("battles").doc(b.id).delete()) }, "Yes"), el("button", { class: "btn small", type: "button", onclick: () => { ui.confirmDelete = null; render(); } }, "No"))
+          : el("button", { class: "btn small", type: "button", onclick: () => { ui.confirmDelete = b.id; render(); } }, "Delete")) : null));
+  }
+
+  const teamLabel = b => b.budget ? `${b.budget} points each` : `${b.teamSize} fighter${b.teamSize > 1 ? "s" : ""} each`;
+  function rulesCard() {
+    return el("details", { class: "card rules", open: !!ui.rulesOpen, ontoggle: e => { ui.rulesOpen = e.target.open; } },
+      el("summary", {}, "How battles work"),
+      el("ul", {},
+        el("li", {}, "Start a battle, then everyone takes a seat. One person can take several seats to play on one screen."),
+        el("li", {}, "Players take turns picking fighters (1, 2, 3, then 3, 2, 1). Each piece can only be picked once per battle."),
+        el("li", {}, "With a points budget, Commons cost 1, Uncommons 2, Rares 3, Epics 4 and Legendaries 5. Spend your points how you like, up to 6 fighters."),
+        el("li", {}, "Every round, each fighter still standing acts once, fastest first. Quick moves let a fighter act first next round."),
+        el("li", {}, "On a fighter's turn, its player picks a move: its signature move, its type move (a guard, heal or power-up), its type's basic attack, or its MAX finisher, which can be used once per battle and never misses."),
+        el("li", {}, "Damage depends on the move's power, Attack vs Defense (or Special vs Special), type advantage (2× or ½×), critical hits and abilities."),
+        el("li", {}, "Every ability and move effect works as a rule. Open a fighter's details in the draft to read exactly what it does."),
+        el("li", {}, "From round 15 it's sudden death: every fighter loses 10% of its max HP each round."),
+        el("li", {}, "The last player with a fighter standing wins.")));
+  }
+
+  // ---------- battle ----------
+  function renderBattle(st) {
+    const mySeats = st.seats.map((s, i) => s.uid === myId ? i : -1).filter(i => i >= 0);
+    const head = el("div", { class: "bhead" },
+      el("button", { class: "btn small", type: "button", onclick: () => { location.hash = ""; } }, "← Battles"),
+      el("h2", {}, st.name),
+      el("span", { class: "pill" }, teamLabel(st)));
+    const seats = el("div", { class: `seats ${st.status === "lobby" ? "" : "compact"}` }, st.seats.map((s, i) => seatChip(st, s, i)));
+    const err = el("div", { class: "err", role: "alert" }, ui.err);
+    if (st.status === "battle" || st.status === "done") return renderBattleScreen(st, mySeats);
+    const out = el("div", { style: "display:grid;gap:16px" }, head, seats, err);
+    if (st.status === "lobby") out.append(renderSeatsLobby(st));
+    if (st.status === "draft") out.append(renderDraft(st, mySeats));
+    return out;
+  }
+
+  function seatChip(st, s, i) {
+    const mine = s.uid === myId;
+    const chip = el("span", { class: "seat", style: `--sc:${seatColor(i)}` }, el("span", { class: "dot" }));
+    const editable = mine && st.status !== "done" && (st.status === "lobby" || ui.renaming === i);
+    if (editable) {
+      // Rename a seat you control: saves when you press Enter or leave the box.
+      const key = `${st.id}:${i}`;
+      const box = el("input", { id: `seatEdit${i}`, class: "seat-name", maxlength: 24, "aria-label": `Name for seat ${i + 1}`, value: ui.seatEdits[key] ?? s.name,
+        oninput: e => { ui.seatEdits[key] = e.target.value; },
+        onkeydown: e => { if (e.key === "Enter") e.target.blur(); },
+        onchange: e => {
+          const v = e.target.value.trim();
+          delete ui.seatEdits[key];
+          if (ui.renaming === i) { ui.renaming = null; setTimeout(render, 0); }
+          if (!v || v === s.name) { e.target.value = s.name; return; }
+          run(() => mutate(st.id, b => { if (b.seats[i].uid !== myId) throw new Error("That seat isn't yours any more."); b.seats[i].name = v; }));
+        } });
+      chip.append(box, el("span", { class: "you" }, "you"));
+    } else {
+      chip.append(el("b", {}, s.name || `Seat ${i + 1}`));
+      if (mine) chip.append(el("span", { class: "you" }, "you"));
+      if (mine && st.status !== "done") chip.append(el("button", { class: "linkbtn", type: "button", "aria-label": `Rename ${s.name || "seat " + (i + 1)}`, onclick: () => {
+        ui.renaming = i; render(); const n = document.getElementById(`seatEdit${i}`); if (n) { n.focus(); n.select(); }
+      } }, "Rename"));
+    }
+    if (!s.uid && st.status === "lobby") {
+      const key = `${st.id}:${i}`;
+      const iHaveSeat = st.seats.some(x => x.uid === myId);
+      const box = el("input", { id: `seatName${i}`, class: "seat-name", maxlength: 24, placeholder: "Player name", "aria-label": `Player name for seat ${i + 1}`,
+        value: ui.seatNames[key] ?? (iHaveSeat ? "" : myName()),
+        oninput: e => { ui.seatNames[key] = e.target.value; },
+        onkeydown: e => { if (e.key === "Enter") take(); } });
+      const take = () => {
+        const v = box.value.trim();
+        if (!v) { ui.err = `Type a name for seat ${i + 1} first.`; render(); return; }
+        delete ui.seatNames[key];
+        run(() => mutate(st.id, b => { if (b.status !== "lobby") throw new Error("The battle has already started."); if (b.seats[i].uid) throw new Error("Someone just took that seat."); b.seats[i] = { name: v, uid: myId }; }));
+      };
+      chip.append(box, el("button", { class: "btn small primary", type: "button", onclick: take }, "Take seat"));
+    }
+    if (mine && st.status === "lobby") chip.append(el("button", { class: "btn small", type: "button", onclick: () => run(() => mutate(st.id, b => { if (b.status === "lobby") b.seats[i] = { name: "", uid: null }; })) }, "Leave"));
+    if (s.uid && !mine && st.status !== "done" && st.status !== "lobby") {
+      chip.append(ui.confirmTake === i
+        ? el("span", { class: "confirm" }, "Play for them?", el("button", { class: "btn small", type: "button", onclick: () => { ui.confirmTake = null; run(() => mutate(st.id, b => { b.seats[i].uid = myId; })); } }, "Yes"), el("button", { class: "btn small", type: "button", onclick: () => { ui.confirmTake = null; render(); } }, "No"))
+        : el("button", { class: "btn small", type: "button", title: "Use this if a player has left", onclick: () => { ui.confirmTake = i; render(); } }, "Take over"));
+    }
+    return chip;
+  }
+
+  function renderSeatsLobby(st) {
+    const filled = st.seats.filter(s => s.uid).length;
+    const canStart = filled === st.seats.length;
+    return el("div", { class: "card", style: "display:grid;gap:10px" },
+      el("h3", { style: "font-size:20px" }, "Waiting for players"),
+      el("p", { class: "muted", style: "margin:0" }, `${filled} of ${st.seats.length} seats taken. Send this page to the other players, or type a name into each open seat and take it to play on one screen.`),
+      el("div", { class: "row" },
+        el("button", { class: "btn primary", type: "button", disabled: !canStart || ui.busy, onclick: () => run(() => mutate(st.id, b => { if (b.status !== "lobby") return; if (b.seats.some(s => !s.uid)) throw new Error("Every seat needs a player first."); E.startDraft(b, Math.random); })) }, "Start picking fighters"),
+        canStart ? null : el("span", { class: "muted" }, "Every seat needs a player.")));
+  }
+
+  function renderDraft(st, mySeats) {
+    const seat = E.draftSeat(st);
+    const myTurn = mySeats.includes(seat);
+    const taken = new Set(st.draft.picks.flat().map(f => f.id));
+    const pickNo = st.draft.i + 1, total = st.draft.order.length;
+    const left = E.pointsLeft(st, seat);
+    const canDone = st.budget && myTurn && st.draft.picks[seat].length > 0;
+    const banner = el("div", { class: "banner draft-banner", style: `--sc:${seatColor(seat)}` },
+      el("h2", {}, myTurn ? `Your pick, ${st.seats[seat].name}` : `${st.seats[seat].name} is picking`),
+      el("span", { class: "muted" }, st.budget ? `${left} point${left === 1 ? "" : "s"} left to spend` : `Pick ${pickNo} of ${total}`),
+      canDone ? el("button", { class: "btn small", type: "button", disabled: ui.busy, onclick: () => run(() => mutate(st.id, b => E.finishPicking(b, seat, Math.random))) }, "I'm done picking") : null);
+    const teams = el("div", { class: "field-grid" }, st.seats.map((s, i) => el("div", { class: "team", style: `--sc:${seatColor(i)}` },
+      el("h3", {}, s.name, mySeats.includes(i) ? el("span", { class: "you" }, "you") : null,
+        st.budget ? el("span", { class: "muted", style: "font-family:var(--font-body);font-size:12px;font-weight:600" }, st.draft.done[i] || E.pointsLeft(st, i) <= 0 ? "done" : `${E.pointsLeft(st, i)} pts left`) : null),
+      st.draft.picks[i].length ? el("div", { class: "picks" }, st.draft.picks[i].map(f => el("div", { class: "row" }, thumb(f.piece, 36, f.name), el("b", {}, f.name), typeChip(f.type)))) : el("span", { class: "muted" }, "No picks yet"))));
+    // pool
+    const typeSel = el("select", { id: "dType", "aria-label": "Filter by type", oninput: e => { ui.draftType = e.target.value; render(); } }, el("option", { value: "" }, "All types"), Object.keys(E.TYPES).map(t => el("option", { value: t }, t)));
+    typeSel.value = ui.draftType;
+    const pool = fighters.filter(f => !taken.has(f.id) && (!ui.draftType || f.type === ui.draftType)).sort((a, b) => a.name.localeCompare(b.name));
+    const weakTo = t => Object.keys(E.TYPES).filter(o => E.TYPES[o].beats.includes(t));
+    const grid = el("div", { class: "pool" }, pool.map(f => { const cost = E.costOf(f), afford = !st.budget || cost <= left; return el("div", { class: `pcard ${afford ? "" : "cant"}` },
+      thumb(f.piece, small() ? 52 : 64, f.name),
+      el("div", { style: "min-width:0" },
+        el("div", { class: "nm" }, f.name),
+        el("div", { class: "row", style: "gap:4px;margin-top:3px" }, typeChip(f.type), el("span", { class: "muted", style: "font-size:11px;font-weight:700;text-transform:uppercase" }, f.rarity), st.budget ? el("span", { class: "tag" }, `${cost} pt${cost > 1 ? "s" : ""}`) : null),
+        el("div", { class: "matchup" }, "Beats ", E.TYPES[f.type].beats.join(", "), " · weak to ", weakTo(f.type).join(", ")),
+        el("div", { class: "stats" }, `HP ${f.hp} · Atk ${f.attack} · Def ${f.defense} · Spd ${f.speed} · Spc ${f.special}`),
+        el("details", { open: openDetails.has(f.id), ontoggle: e => { e.target.open ? openDetails.add(f.id) : openDetails.delete(f.id); } }, el("summary", {}, `${f.ability.name} · ${f.move.name}`),
+          el("p", { style: "margin:4px 0" }, el("b", {}, f.ability.name + ": "), f.ability.text),
+          el("p", { style: "margin:4px 0" }, el("b", {}, f.move.name), ` (${f.move.cat === "status" ? "status" : f.move.power + " power"}, ${f.move.accuracy}%): `, f.move.text),
+          el("p", { style: "margin:4px 0" }, el("b", {}, E.TYPE_MOVES[f.type].name + " (type move): "), E.TYPE_MOVES[f.type].text),
+          el("p", { style: "margin:4px 0" }, el("b", {}, f.move.name + " MAX: "), "once per battle, a bigger version that can't miss.")),
+        myTurn ? el("button", { class: "btn small primary pickbtn", type: "button", disabled: ui.busy || !afford, title: afford ? "" : "Not enough points", onclick: () => run(() => mutate(st.id, b => {
+          const fresh = fighters.find(x => x.id === f.id);
+          E.pick(b, seat, fighterForBattle(fresh), Math.random);
+        })) }, afford ? "Pick" : "Too many points") : null)); }));
+    // Type chart, with the types already picked by each player
+    const pickedTypes = st.draft.picks.map(team => team.map(f => f.type));
+    const chart = el("details", { class: "card typechart", open: ui.chartOpen !== false, ontoggle: e => { ui.chartOpen = e.target.open; } },
+      el("summary", {}, "Type chart: who beats who (2× damage)"),
+      el("div", { class: "tgrid" }, Object.keys(E.TYPES).map(t => el("div", { class: "trow" }, typeChip(t), el("span", { class: "arrow" }, "beats"), E.TYPES[t].beats.map(typeChip),
+        el("span", { class: "who" }, pickedTypes.map((types, i) => types.includes(t) ? el("span", { class: "dot", style: `--sc:${seatColor(i)}`, title: `${st.seats[i].name} has a ${t}` }) : null))))));
+    return el("div", { style: "display:grid;gap:14px" }, banner, teams, chart,
+      el("div", { class: "row" }, el("h3", { style: "font-size:20px" }, "Fighters"), typeSel, el("span", { class: "muted" }, `${pool.length} available`)),
+      fightersLoaded ? grid : el("div", { class: "empty" }, "Loading fighters…"));
+  }
+  const fighterForBattle = f => ({ id: f.id, name: f.name, type: f.type, rarity: f.rarity, hp: f.hp, attack: f.attack, defense: f.defense, speed: f.speed, special: f.special, piece: f.piece, ability: f.ability, move: f.move });
+
+  // ================= Battle screen: arena (top) + turn controls (bottom) =================
+  // Fighters stand around a ring, facing the middle. The camera looks across at a short
+  // stretch of the far side, so 3-5 fighters are in view; swiping turns the view around the ring.
+  const SLOT = 34 * Math.PI / 180;          // on-screen angle between neighbours
+  const view = { bid: null, rot: 0, anim: 0, turnKey: null, dragging: false, pendingRender: false, peeked: false, hint: true, rotateToActive: false,
+    phase: "A", ringIds: [], targetRings: [] };
+  // In targeting, the enemy standing in the middle of the view is the target.
+  function centredRing() { const n = view.ringIds.length || 1; return ((Math.round(view.rot) % n) + n) % n; }
+  function settle() {
+    if (view.phase !== "B") return;
+    const ring = centredRing();
+    if (!view.targetRings.includes(ring)) return;          // passing over own team: keep the current target
+    const id = view.ringIds[ring];
+    if (id !== ui.target) { ui.target = id; render(); }
+  }
+  // Nearest valid target to a (fractional) ring position, searching both ways round.
+  function nearestTarget(pos, dir) {
+    const n = view.ringIds.length, rings = view.targetRings;
+    if (!rings.length) return Math.round(pos);
+    let best = null, bd = 1e9;
+    for (const r of rings) {
+      let d = ((r - pos) % n + n) % n; if (d > n / 2) d -= n;
+      if (dir > 0 && d <= 0.01) d += n; if (dir < 0 && d >= -0.01) d -= n;
+      if (Math.abs(d) < bd) { bd = Math.abs(d); best = pos + d; }
+    }
+    return best;
+  }
+  function step(dir) {
+    hideHint();
+    rotateTo(Math.round(view.rot) + dir);
+  }
+  const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const svgEl = (tag, attrs) => { const n = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+  const ringIndex = (st, id) => st.units.findIndex(u => u.id === id);
+
+  // A window onto the photo, cropped to one piece. SVG scales the same way in every browser.
+  function thumbFill(pid, label) {
+    const box = PIECES[pid];
+    if (!box) return el("span", { class: "fill none" }, "?");
+    const [x, y, w, h] = box;
+    const svg = svgEl("svg", { class: "fill", viewBox: `${(x * IW / 100).toFixed(1)} ${(y * IH / 100).toFixed(1)} ${(w * IW / 100).toFixed(1)} ${(h * IH / 100).toFixed(1)}`,
+      preserveAspectRatio: "xMidYMax meet", role: "img", "aria-label": label || pid });
+    // Clip to the piece itself, so nothing around it shows when the box is a different shape.
+    const cid = "crop" + (++thumbFill.n);
+    const clip = svgEl("clipPath", { id: cid });
+    clip.append(svgEl("rect", { x: (x * IW / 100).toFixed(1), y: (y * IH / 100).toFixed(1), width: (w * IW / 100).toFixed(1), height: (h * IH / 100).toFixed(1), rx: 14 }));
+    const defs = svgEl("defs", {}); defs.append(clip);
+    const img = svgEl("image", { href: PHOTO, x: 0, y: 0, width: IW, height: IH, preserveAspectRatio: "none", "clip-path": `url(#${cid})` });
+    img.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", PHOTO);
+    svg.append(defs, img);
+    return svg;
+  }
+
+  thumbFill.n = 0;
+  function relSlot(i, rot, n) { let u = ((i - rot) % n + n) % n; if (u >= n / 2) u -= n; return u; }
+  function slotPx(arena) { return Math.min(arena.clientWidth * 0.66, 600) * Math.sin(SLOT); }
+
+  function layoutArena() {
+    const arena = document.querySelector(".arena"); if (!arena) return;
+    const figs = arena.querySelectorAll(".fig"), n = figs.length; if (!n) return;
+    const W = arena.clientWidth, H = arena.clientHeight, R = Math.min(W * 0.66, 600);
+    const base = Math.max(76, Math.min(H * 0.34, W * 0.33, 170));
+    arena.style.setProperty("--fig", base + "px");
+    figs.forEach(f => {
+      const u = relSlot(+f.dataset.ring, view.rot, n), phi = u * SLOT, c = 1 - Math.cos(phi);
+      let op = Math.abs(u) > 2.3 ? Math.max(0, 1 - (Math.abs(u) - 2.3) / 0.6) : 1;
+      if (n > 1) op *= Math.max(0, Math.min(1, (n / 2 - Math.abs(u)) / 0.45));   // no visible jump where the ring wraps
+      if (op <= 0.02) { f.style.visibility = "hidden"; f.tabIndex = -1; return; }
+      const x = W / 2 + R * Math.sin(phi), y = H * 0.52 + c * H * 0.22;
+      const s = 0.84 + 0.34 * c;
+      f.style.visibility = "visible";
+      f.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%) scale(${s.toFixed(3)}) rotateY(${(-phi * 26).toFixed(1)}deg)`;
+      f.style.opacity = op.toFixed(2);
+      f.style.zIndex = String(100 + Math.round(c * 100));
+      f.tabIndex = Math.abs(u) < 0.5 ? 0 : -1;
+      f.classList.toggle("aim", view.phase === "B" && Math.abs(u) < 0.5 && view.targetRings.includes(+f.dataset.ring));
+    });
+    arena.querySelectorAll(".tban").forEach(bn => {
+      const u = relSlot(+bn.dataset.pos, view.rot, n), phi = u * SLOT, c = 1 - Math.cos(phi);
+      let op = Math.abs(u) > 2.2 ? Math.max(0, 1 - (Math.abs(u) - 2.2) / 0.6) : 1;
+      if (n > 1) op *= Math.max(0, Math.min(1, (n / 2 - Math.abs(u)) / 0.45));
+      if (op <= 0.02) { bn.style.visibility = "hidden"; return; }
+      const s = 0.84 + 0.34 * c, figY = H * 0.52 + c * H * 0.22;
+      const y = Math.max(64, figY - s * (base + 70) / 2 - 58);
+      bn.style.visibility = "visible";
+      bn.style.opacity = op.toFixed(2);
+      bn.style.zIndex = String(250 + Math.round(c * 100));
+      bn.style.transform = `translate(${(W / 2 + R * Math.sin(phi)).toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%) scale(${(0.92 + 0.28 * c).toFixed(3)}) rotateY(${(-phi * 30).toFixed(1)}deg) rotateX(10deg)`;
+    });
+    const floor = arena.querySelector(".floor"); if (floor) floor.style.backgroundPosition = `${(-view.rot * slotPx(arena)).toFixed(1)}px 0`;
+    const wedge = document.querySelector(".radar .wedge"); if (wedge) wedge.setAttribute("transform", `rotate(${(view.rot * 360 / n).toFixed(1)} 30 30)`);
+  }
+
+  function rotateTo(target, ms = 420) {
+    const n = document.querySelectorAll(".arena .fig").length || 1;
+    let d = ((target - view.rot) % n + n) % n; if (d > n / 2) d -= n;
+    const from = view.rot, to = from + d, t0 = performance.now();
+    cancelAnimationFrame(view.anim);
+    if (reduceMotion() || ms === 0 || Math.abs(d) < 0.001) { view.rot = ((to % n) + n) % n; layoutArena(); settle(); return; }
+    const step = now => {
+      const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+      view.rot = from + (to - from) * e; layoutArena();
+      if (k < 1) view.anim = requestAnimationFrame(step); else { view.rot = ((to % n) + n) % n; layoutArena(); settle(); }
+    };
+    view.anim = requestAnimationFrame(step);
+  }
+
+  function hideHint() { if (!view.hint) return; view.hint = false; const h = document.querySelector(".swipehint"); if (h) h.classList.add("gone"); }
+
+  function bindArena(arena, onTap) {
+    let drag = null;
+    arena.addEventListener("pointerdown", e => {
+      if (e.button > 0) return;
+      cancelAnimationFrame(view.anim);
+      drag = { x: e.clientX, rot0: view.rot, moved: false, lastX: e.clientX, lastT: performance.now(), v: 0 };
+      view.dragging = true;
+      try { arena.setPointerCapture(e.pointerId); } catch {}
+    });
+    arena.addEventListener("pointermove", e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) > 10) { drag.moved = true; arena.classList.add("dragging"); hideHint(); }
+      if (!drag.moved) return;
+      view.rot = drag.rot0 - dx / slotPx(arena);
+      const now = performance.now();
+      drag.v = 0.8 * drag.v + 0.2 * ((e.clientX - drag.lastX) / Math.max(1, now - drag.lastT));
+      drag.lastX = e.clientX; drag.lastT = now;
+      layoutArena();
+    });
+    const finish = (e, cancelled) => {
+      if (!drag) return;
+      const d = drag; drag = null; view.dragging = false; arena.classList.remove("dragging");
+      if (!d.moved && !cancelled) {
+        // A tap, not a swipe: find the fighter under the finger.
+        const hit = document.elementFromPoint(e.clientX, e.clientY);
+        const f = hit && hit.closest ? hit.closest(".fig") : null;
+        if (f && f.style.visibility !== "hidden") onTap(f.dataset.uid, +f.dataset.ring);
+      } else {
+        const fling = Math.max(-3, Math.min(3, -d.v * 220 / slotPx(arena)));
+        const aim = view.rot + fling;
+        rotateTo(Math.round(aim), 360);
+      }
+      if (view.pendingRender) { view.pendingRender = false; setTimeout(render, 380); }
+    };
+    arena.addEventListener("pointerup", e => finish(e, false));
+    arena.addEventListener("pointercancel", e => finish(e, true));
+    arena.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+      if (e.key === "Enter" || e.key === " ") { const f = e.target.closest && e.target.closest(".fig"); if (f) { e.preventDefault(); onTap(f.dataset.uid, +f.dataset.ring); } }
+    });
+    if (window.ResizeObserver) new ResizeObserver(() => layoutArena()).observe(arena);
+  }
+
+  function radar(st, ctx) {
+    const n = st.units.length;
+    const box = el("button", { class: "radar", type: "button", "aria-label": "Map of the arena. Tap a spot to turn there." });
+    const svg = svgEl("svg", { viewBox: "0 0 60 60", width: "60", height: "60", "aria-hidden": "true" });
+    svg.append(svgEl("circle", { cx: 30, cy: 30, r: 24, style: "fill:none;stroke:var(--arena-line);stroke-width:1.5" }));
+    const span = Math.min(80, 2.3 * 360 / n), a1 = (-90 - span) * Math.PI / 180, a2 = (-90 + span) * Math.PI / 180;
+    svg.append(svgEl("path", { class: "wedge", style: "fill:var(--arena-wedge)",
+      d: `M30 30 L${(30 + 29 * Math.cos(a1)).toFixed(2)} ${(30 + 29 * Math.sin(a1)).toFixed(2)} A29 29 0 0 1 ${(30 + 29 * Math.cos(a2)).toFixed(2)} ${(30 + 29 * Math.sin(a2)).toFixed(2)} Z` }));
+    st.units.forEach((u, i) => {
+      const a = (i * 360 / n - 90) * Math.PI / 180;
+      const tgt = ctx.targetable.has(u.id), act = u.id === ctx.activeId, sel = u.id === ctx.selected;
+      svg.append(svgEl("circle", { cx: (30 + 24 * Math.cos(a)).toFixed(2), cy: (30 + 24 * Math.sin(a)).toFixed(2), r: act || sel ? 4.4 : 3.3,
+        class: tgt ? "rt" : "", style: `fill:${u.fainted ? "var(--arena-bg2)" : `var(--s${u.seat % 6})`};stroke:${sel ? "var(--accent)" : act ? "var(--ink)" : u.fainted ? "var(--arena-line)" : "var(--arena-bg2)"};stroke-width:${act || sel ? 2 : 1}` }));
+    });
+    box.append(svg);
+    box.addEventListener("pointerdown", e => e.stopPropagation());
+    box.addEventListener("click", e => {
+      const r = box.getBoundingClientRect();
+      let ang = Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2) * 180 / Math.PI + 90;
+      if (ang < 0) ang += 360;
+      hideHint(); const ri = Math.round(ang / (360 / n)) % n; rotateTo(ri);
+    });
+    return box;
+  }
+
+  function figure(st, u, ring, ctx) {
+    const pv = ctx.preview.get(u.id);
+    const pct = Math.max(0, u.hp / u.maxHp);
+    const tags = [];
+    if (u.status) tags.push(el("span", { class: "tag bad" }, STATUS_SHORT[u.status]));
+    if (u.charm) tags.push(el("span", { class: "tag bad" }, "Charmed"));
+    if (u.reflect) tags.push(el("span", { class: "tag up" }, "Reflect"));
+    if (u.mindMap) tags.push(el("span", { class: "tag up" }, "Mind Map"));
+    if (u.charged) tags.push(el("span", { class: "tag up" }, "Charged"));
+    if (u.lockTo) tags.push(el("span", { class: "tag" }, "Lured"));
+    const stages = Object.entries(u.stages).filter(([, v]) => v);
+    if (stages.length) tags.push(el("span", { class: "tag" }, stages.map(([k, v]) => `${STAT_SHORT[k]}${v > 0 ? "+" : ""}${v}`).join(" ")));
+    const cls = ["fig", u.fainted ? "ko" : "", ctx.activeId === u.id ? "active" : "", ctx.targetable.has(u.id) ? "tgt" : "", ctx.selected === u.id ? "sel" : "",
+      ctx.phase === "B" && !ctx.targetable.has(u.id) && !u.fainted ? "dim" : ""].join(" ");
+    const label = `${u.name}, ${st.seats[u.seat].name}'s fighter, ${u.fainted ? "knocked out" : `${u.hp} of ${u.maxHp} HP`}${pv ? `, would take ${pv.min} to ${pv.max} damage, ${pv.hit}% to hit` : ""}${ctx.selected === u.id ? ", selected target" : ""}`;
+    return el("div", { class: cls, "data-uid": u.id, "data-ring": ring, role: "button", "aria-label": label, style: `--sc:${seatColor(u.seat)}` },
+      ctx.activeId === u.id ? el("div", { class: "turnmark" }, "Turn") : null,
+      ctx.selected === u.id ? el("div", { class: "turnmark selmark" }, "Target") : null,
+      pv ? el("div", { class: `pvtag ${pv.ko ? "ko" : ""}` }, pv.min === pv.max ? `${pv.max}` : `${pv.min}–${pv.max}`, el("small", {}, " dmg"),
+        pv.ko === "sure" ? el("b", {}, "KO") : pv.ko === "maybe" ? el("b", {}, "KO?") : null, pv.typeMult > 1 ? el("b", { class: "x2" }, "2×") : null) : null,
+      el("div", { class: "figpic" }, thumbFill(u.piece, u.name)),
+      el("div", { class: "base" }),
+      el("div", { class: "plate" },
+        el("div", { class: "pname" }, u.name),
+        el("div", { class: "hpbar" }, pv && !u.fainted
+          ? [el("i", { class: pct <= .25 ? "low" : pct <= .5 ? "mid" : "", style: `width:${Math.max(0, (u.hp - pv.max) / u.maxHp * 100)}%` }), el("i", { class: "proj", style: `width:${Math.min(100, pv.max / u.maxHp * 100)}%` })]
+          : el("i", { class: pct <= .25 ? "low" : pct <= .5 ? "mid" : "", style: `width:${pct * 100}%` })),
+        el("div", { class: "prow" }, typeChip(u.type), el("span", { class: "hpn" }, u.fainted ? "KO" : `${u.hp}/${u.maxHp}`)),
+        tags.length ? el("div", { class: "ptags" }, tags.slice(0, 2)) : null));
+  }
+
+  function impactLine(st, active, m) {
+    if (m.disabled) return m.why;
+    const sm = E.moveSummary(st, active.id, m.key);
+    if (!sm) return "";
+    if (sm.kind === "self") return [sm.heal ? `+${sm.heal} HP` : "", ...sm.notes].filter(Boolean).join(" · ") || "No effect right now";
+    return `Up to ${sm.max} dmg${sm.hits !== 1 ? ` (${sm.hits} hits)` : ""} on ${sm.target}` + (sm.ko === "sure" ? " · knocks out!" : sm.ko === "maybe" ? " · can knock out" : "") + (sm.typeMult > 1 ? " · 2×" : "");
+  }
+  function bestTargetId(st, active, key) {
+    const mv = E.availableMoves(st, active).find(m => m.key === key); if (!mv) return null;
+    let best = null, score = -1;
+    for (const id of E.legalTargets(st, active, mv)) {
+      const pv = E.previewMove(st, active.id, key, id); if (!pv) continue;
+      const sc = pv.max * pv.hit / 100 + (pv.ko ? 1000 : 0);
+      if (sc > score) { score = sc; best = id; }
+    }
+    return best;
+  }
+
+  function renderBattleScreen(st, mySeats) {
+    const active = st.status === "battle" ? E.activeUnit(st) : null;
+    const iControl = !!active && mySeats.includes(active.seat);
+    const moves = iControl ? E.availableMoves(st, active) : [];
+    const selected = moves.find(m => m.key === ui.move && !m.disabled) || null;
+    const resultOn = !!(ui.result && ui.result.bid === st.id && Date.now() < ui.result.until);
+    const phase = st.status === "done" ? "done" : resultOn ? "C" : !iControl ? "wait" : (selected && selected.target === "foe") ? "B" : "A";
+    const targetable = new Set(), preview = new Map();
+    if (phase === "B") for (const id of E.legalTargets(st, active, selected)) { targetable.add(id); const pv = E.previewMove(st, active.id, selected.key, id); if (pv) preview.set(id, pv); }
+    if (ui.target && !targetable.has(ui.target)) ui.target = null;
+    const ctx = { activeId: active && phase !== "C" ? active.id : null, targetable, preview, selected: ui.target, phase };
+    view.phase = phase; view.ringIds = st.units.map(u => u.id);
+    view.targetRings = st.units.map((u, i) => targetable.has(u.id) ? i : -1).filter(i => i >= 0);
+
+    const screen = el("div", { class: `bscreen phase-${phase}` });
+    // header strip
+    screen.append(el("div", { class: "bs-head" },
+      el("button", { class: "btn small", type: "button", onclick: () => { location.hash = ""; } }, "← Battles"),
+      el("div", { class: "bs-title" }, el("b", {}, st.name), el("span", {}, st.status === "done" ? "Finished" : `Round ${st.round}`)),
+      el("button", { class: "btn small", type: "button", onclick: () => { ui.sheet = "info"; render(); } }, "Log & players"),
+      el("button", { class: "btn small iconbtn", type: "button", "aria-pressed": String(soundOn), "aria-label": soundOn ? "Sound on" : "Sound off", onclick: () => { toggleSound(); render(); } }, soundOn ? "♪ On" : "♪ Off")));
+    // arena
+    const arena = el("div", { class: "arena", tabindex: "-1", "aria-label": "Arena. Swipe left or right to look around. Use the arrow keys on a keyboard." },
+      el("div", { class: "sky" }), el("div", { class: "floor" }), el("div", { class: "ringline" }));
+    st.units.forEach((u, i) => arena.append(figure(st, u, i, ctx)));
+    st.seats.forEach((seat, si) => {
+      const idx = st.units.map((u, i) => u.seat === si ? i : -1).filter(i => i >= 0);
+      if (!idx.length) return;
+      const alive = idx.filter(i => !st.units[i].fainted).length;
+      const isTurn = active && active.seat === si && phase !== "done" && phase !== "C";
+      const won = phase === "done" && st.winner === si;
+      const cords = svgEl("svg", { class: "tban-cords", viewBox: "0 0 100 26", preserveAspectRatio: "none", "aria-hidden": "true" });
+      cords.append(svgEl("polyline", { points: "6,26 50,3 94,26", style: "fill:none;stroke:currentColor;stroke-width:2.2;vector-effect:non-scaling-stroke" }),
+        svgEl("circle", { cx: 50, cy: 3, r: 3, style: "fill:currentColor" }));
+      arena.append(el("div", { class: `tban ${isTurn ? "turn" : ""} ${won ? "won" : ""} ${alive === 0 ? "out" : ""}`, "data-pos": (idx[0] + idx[idx.length - 1]) / 2, style: `--sc:${seatColor(si)}`, "aria-hidden": "true" },
+        cords, el("div", { class: "tban-rod" }),
+        el("div", { class: "tban-flag" },
+          el("div", { class: "tban-name" }, seat.name || `Player ${si + 1}`),
+          el("div", { class: "tban-sub" }, won ? "Winner!" : alive === 0 ? "Knocked out" : isTurn ? `Their turn · ${alive}/${idx.length}` : `${alive}/${idx.length} standing`))));
+    });
+    arena.append(
+      el("div", { class: "arena-pill" }, phase === "B" ? (ui.target ? `Target: ${E.unitById(st, ui.target).name}` : "Swipe an enemy to the middle") : phase === "C" ? "Resolving…" : phase === "done" ? "Battle over" : `Round ${st.round}`),
+      radar(st, ctx),
+      el("button", { class: "chev left", type: "button", "aria-label": "Turn left", onpointerdown: e => e.stopPropagation(), onclick: () => step(-1) }, "‹"),
+      el("button", { class: "chev right", type: "button", "aria-label": "Turn right", onpointerdown: e => e.stopPropagation(), onclick: () => step(1) }, "›"),
+      st.units.length > 3 ? el("div", { class: `swipehint ${view.hint ? "" : "gone"}`, "aria-hidden": "true" }, "‹ swipe to look around ›") : null);
+    bindArena(arena, (uid, ring) => {
+      hideHint();
+      if (phase === "B") {
+        if (targetable.has(uid)) rotateTo(ring);   // the centred enemy becomes the target
+        else { const f = arena.querySelector(`.fig[data-uid="${uid}"]`); if (f) { f.classList.remove("nope"); void f.offsetWidth; f.classList.add("nope"); } }
+        return;
+      }
+      rotateTo(ring); ui.sheet = "inspect:" + uid; render();
+    });
+    screen.append(arena, controlPanel(st, active, iControl, moves, selected, phase));
+    if (ui.sheet) screen.append(sheetView(st, mySeats));
+    return screen;
+  }
+
+  function turnHead(st, active, iControl, step, selected) {
+    const owner = st.seats[active.seat];
+    return el("div", { class: "th", style: `--sc:${seatColor(active.seat)}` },
+      el("span", { class: "thpic" }, thumbFill(active.piece, active.name)),
+      el("div", { class: "thwho" },
+        el("div", { class: "thname" }, el("span", { class: "dot" }), iControl ? `${owner.name}'s turn` : `${owner.name} is choosing…`),
+        el("div", { class: "thsub" }, `${active.name} · ${active.hp}/${active.maxHp} HP`, active.lockTo && E.unitById(st, active.lockTo) && !E.unitById(st, active.lockTo).fainted ? ` · must attack ${E.unitById(st, active.lockTo).name}` : "")),
+      null);
+  }
+
+  function controlPanel(st, active, iControl, moves, selected, phase) {
+    const panel = el("section", { class: "ctl", "data-phase": phase, "aria-label": "Turn controls" });
+    const inner = el("div", { class: "ctl-in" }); panel.append(inner);
+    if (phase === "done") {
+      const w = st.winner;
+      inner.append(el("div", { class: "donebox", style: `--sc:${w >= 0 ? seatColor(w) : "var(--line)"}` },
+        el("div", { class: "thname" }, w >= 0 ? `${st.seats[w].name} wins!` : "It's a draw"),
+        el("div", { class: "thsub" }, `After ${st.round} round${st.round > 1 ? "s" : ""}.`),
+        el("div", { class: "actrow" },
+          el("button", { class: "btn", type: "button", onclick: () => { location.hash = ""; } }, "Back to battles"),
+          el("button", { class: "btn primary", type: "button", disabled: ui.busy, onclick: () => rematch(st) }, "Rematch"))));
+      return panel;
+    }
+    if (phase === "C") {
+      inner.append(el("div", { class: "res" },
+        ui.result.lines.map(e => el("div", { class: "r-" + (e.k || "plain") }, e.t)),
+        active ? el("div", { class: "next" }, `Next: ${st.seats[active.seat].name}'s ${active.name}`) : null));
+      return panel;
+    }
+    if (!active) return panel;
+    if (phase === "wait") {
+      inner.append(turnHead(st, active, false, 0, null));
+      const last = [...st.log].reverse().find(e => e.k === "move" || e.k === "max");
+      inner.append(el("p", { class: "waitline" }, last ? `Last: ${last.t}` : "Waiting for the first move."));
+      return panel;
+    }
+    // Choose a move and its target on one panel.
+    inner.append(turnHead(st, active, true, 0, selected));
+    inner.append(el("div", { class: "mgrid" }, moves.map(m => el("button", { class: `mv ${m.max ? "maxmove" : ""}`, type: "button", "aria-pressed": String(!!selected && selected.key === m.key), disabled: m.disabled || ui.busy,
+      onclick: () => {
+        if (selected && selected.key === m.key) return;
+        ui.move = m.key; ui.target = null; render();
+        if (m.target === "foe") { const best = bestTargetId(st, active, m.key); rotateTo(best ? ringIndex(st, best) : nearestTarget(view.rot, 0)); }
+      } },
+      el("div", { class: "mvname" }, el("b", {}, m.name), m.key === "type" ? el("span", { class: "tag" }, "Type") : m.key === "basic" ? el("span", { class: "tag" }, "Basic") : m.max ? el("span", { class: "tag maxtag" }, "Once") : m.stolen ? el("span", { class: "tag" }, "Stolen") : null),
+      el("div", { class: "mvmeta" }, m.cat === "status" ? "On itself" : `${m.power} pow · ${m.accuracy}%`),
+      el("div", { class: "mvimp" }, impactLine(st, active, m))))));
+    let info, label, enabled, go;
+    if (!selected) { info = "Tap a move. Attacks hit the enemy in the middle of the arena."; label = "Pick a move"; enabled = false; }
+    else if (selected.target === "self") {
+      info = [el("b", {}, selected.name), `: ${selected.text}`, el("span", { class: "dimp" }, ` ${impactLine(st, active, selected)}`)];
+      label = `Use ${selected.name}`; enabled = true; go = () => doAct(st, selected.key, active.id);
+    } else {
+      const pv = ui.target ? E.previewMove(st, active.id, selected.key, ui.target) : null;
+      const tu = ui.target ? E.unitById(st, ui.target) : null;
+      info = tu && pv
+        ? [el("b", {}, selected.name), " → ", el("b", { class: "tname" }, tu.name), ": ", el("b", {}, pv.min === pv.max ? `${pv.max}` : `${pv.min}–${pv.max}`), ` dmg · ${pv.hit}% to hit`,
+           pv.ko === "sure" ? " · knocks out!" : pv.ko === "maybe" ? " · could knock out" : "", pv.typeMult > 1 ? " · 2×" : pv.typeMult < 1 ? " · ½×" : "", pv.notes.length ? ` · ${pv.notes[0]}` : ""]
+        : [el("b", {}, selected.name), ": swipe an enemy into the middle."];
+      label = tu ? `Attack ${tu.name}` : "Pick a target"; enabled = !!tu; go = () => doAct(st, selected.key, ui.target);
+    }
+    inner.append(el("div", { class: "actbar" },
+      el("div", { class: "actinfo" }, info),
+      el("button", { class: "btn primary big", type: "button", disabled: !enabled || ui.busy, onclick: () => go && go() }, ui.busy ? "…" : label)));
+    return panel;
+  }
+
+  function sheetView(st, mySeats) {
+    const close = () => { ui.sheet = null; ui.renaming = null; render(); };
+    const wrap = el("div", { class: "sheet-wrap", onclick: e => { if (e.target === wrap) close(); } });
+    const sh = el("div", { class: "sheet", role: "dialog", "aria-modal": "true" });
+    if (ui.sheet && ui.sheet.startsWith("inspect:")) {
+      const u = E.unitById(st, ui.sheet.slice(8));
+      if (!u) { ui.sheet = null; return el("span"); }
+      const tm = E.TYPE_MOVES[u.type];
+      sh.setAttribute("aria-label", u.name);
+      sh.append(el("div", { class: "sh-head" }, el("span", { class: "thpic big" }, thumbFill(u.piece, u.name)),
+        el("div", {}, el("div", { class: "thname" }, u.name), el("div", { class: "row", style: "gap:6px" }, typeChip(u.type), el("span", { class: "muted" }, `${st.seats[u.seat].name} · ${u.fainted ? "knocked out" : `${u.hp}/${u.maxHp} HP`}`))),
+        el("button", { class: "btn small", type: "button", onclick: close }, "Close")),
+        el("dl", { class: "sh-stats" }, ["attack", "defense", "speed", "special"].map(k => el("div", {}, el("dt", {}, STAT_SHORT[k]), el("dd", {}, String(u.stats[k]), u.stages[k] ? el("small", {}, ` (${u.stages[k] > 0 ? "+" : ""}${u.stages[k]})`) : null)))),
+        el("p", {}, el("b", {}, `${u.ability.name}: `), u.ability.text),
+        el("p", {}, el("b", {}, `${u.move.name}: `), u.move.text),
+        el("p", {}, el("b", {}, `${tm.name} (type move): `), tm.text),
+        el("p", { class: "muted" }, u.maxUsed ? "MAX finisher already used." : `MAX finisher still available: ${u.move.name} MAX.`));
+    } else {
+      sh.setAttribute("aria-label", "Log and players");
+      sh.append(el("div", { class: "sh-head" }, el("div", { class: "thname" }, "Log & players"), el("button", { class: "btn small", type: "button", onclick: close }, "Close")));
+      if (st.status === "battle") sh.append(el("div", { class: "order" }, el("span", { class: "lbl" }, `Round ${st.round}`),
+        st.queue.map((id, i) => { const u = E.unitById(st, id); if (!u) return null; return el("div", { class: `oslot ${i === st.qi ? "now" : ""} ${i < st.qi || u.fainted ? "done" : ""}`, style: `--sc:${seatColor(u.seat)}`, title: u.name }, thumb(u.piece, 32, u.name), el("span", {}, u.name)); })));
+      sh.append(el("div", { class: "seats compact" }, st.seats.map((s, i) => seatChip(st, s, i))), renderLog(st));
+    }
+    wrap.append(sh);
+    return wrap;
+  }
+
+  function doAct(st, moveKey, targetId) {
+    run(() => mutate(st.id, b => {
+      const a = E.activeUnit(b);
+      if (!a || b.seats[a.seat].uid !== myId) throw new Error("It's not your turn any more.");
+      E.act(b, { move: moveKey, target: targetId }, Math.random);
+    })).then(() => { ui.move = null; ui.aim = false; ui.target = null; render(); });
+  }
+
+  function rematch(st) {
+    run(async () => {
+      const id = "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const nb = E.newBattle({ id, name: st.name.replace(/( · rematch)+$/, "") + " · rematch", players: st.seats.length, teamSize: st.teamSize, budget: st.budget, creator: myId, now: Date.now() });
+      nb.seats = st.seats.map(s => ({ name: s.name, uid: s.uid }));
+      E.startDraft(nb, Math.random);
+      await db.collection("battles").doc(id).set(nb);
+      location.hash = "#b-" + id;
+    });
+  }
+
+  function renderLog(st) {
+    const box = el("div", { class: "log", "aria-live": "polite" });
+    const all = [...st.log].reverse();
+    const shown = ui.logAll ? all : all.slice(0, 10);
+    for (const e of shown) {
+      if (e.k === "round") box.append(el("div", { class: "round" }, e.t));
+      else box.append(el("div", { class: e.k === "max" ? "move maxline" : e.k || "" }, e.t));
+    }
+    if (all.length > 10) box.append(el("button", { class: "linkbtn", type: "button", onclick: () => { ui.logAll = !ui.logAll; render(); } }, ui.logAll ? "Show less" : `Show the whole log (${all.length} lines)`));
+    return box;
+  }
+
+  render();
+
+  // ---------- data ----------
+  // Outside claude.ai the page keeps everything in this browser (pass-and-play on one device).
+  // It offers the same small Firestore-style API the page uses: collection/doc, get/set/update/delete,
+  // orderBy/limit, onSnapshot and acquire. Swap this for a real backend to play across devices elsewhere.
+  function localDb(seed) {
+    const KEY = "bead-battle-local-db";
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(KEY)); } catch {}
+    if (!data || typeof data !== "object") data = { fighters: {}, battles: {} };
+    if (seed && !Object.keys(data.fighters || {}).length) data.fighters = seed;
+    const clone = x => JSON.parse(JSON.stringify(x));
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} };
+    const listeners = [];
+    const meta = { fromCache: false, hasPendingWrites: false };
+    const snap = (name, q) => {
+      let docs = Object.entries(data[name] || {}).map(([id, d]) => ({ id, exists: true, data: () => clone(d), metadata: meta }));
+      if (q.ob) docs.sort((a, b) => ((a.data()[q.ob] ?? 0) - (b.data()[q.ob] ?? 0)) * (q.dir === "desc" ? -1 : 1));
+      if (q.lim) docs = docs.slice(0, q.lim);
+      return { docs, size: docs.length, empty: !docs.length, metadata: meta, docChanges: () => [] };
+    };
+    const fire = name => listeners.filter(l => l.name === name).forEach(l => setTimeout(() => l.next(snap(name, l.q)), 0));
+    window.addEventListener("storage", e => { if (e.key === KEY) { try { data = JSON.parse(e.newValue) || data; } catch {} fire("fighters"); fire("battles"); } });
+    const coll = (name, q = {}) => ({
+      orderBy: (field, dir = "asc") => coll(name, Object.assign({}, q, { ob: field, dir })),
+      limit: n => coll(name, Object.assign({}, q, { lim: n })),
+      get: async () => snap(name, q),
+      onSnapshot(next) { const l = { name, q, next }; listeners.push(l); setTimeout(() => next(snap(name, q)), 0); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; },
+      doc(id) {
+        id = id || Math.random().toString(36).slice(2, 12);
+        return { id,
+          acquire: async () => ({ acquired: true }),
+          get: async () => { const d = (data[name] || {})[id]; return { id, exists: !!d, data: () => d ? clone(d) : undefined, metadata: meta }; },
+          set: async body => { (data[name] = data[name] || {})[id] = clone(body); save(); fire(name); },
+          update: async body => { Object.assign(data[name][id], clone(body)); save(); fire(name); },
+          delete: async () => { if (data[name]) delete data[name][id]; save(); fire(name); } };
+      },
+    });
+    return { collection: name => coll(name) };
+  }
+
+  (async () => {
+    const status = $("#status");
+    const onClaude = !!(window.claude && typeof window.claude.use === "function");
+    let dbNs = null, user = null, localMode = false;
+    if (onClaude) [dbNs, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    else { dbNs = localDb(window.BEAD_FIGHTERS || null); localMode = true; }
+    if (!dbNs) { battlesLoaded = true; status.textContent = "Sign in to play"; render(); return; }
+    db = dbNs;
+    try { myId = user ? await user.id() : null; } catch { myId = null; }
+    if (!myId) { myId = store.get("bb-device") || ("d" + Math.random().toString(36).slice(2, 10)); store.set("bb-device", myId); }
+    try { if (user && await user.canEdit()) canWrite = "admin"; } catch {}
+    const timer = setTimeout(() => { status.textContent = "Can't reach the battles yet. Still trying…"; }, 10000);
+    let firstF = false, firstB = false;
+    const ready = () => { if (firstF && firstB) { clearTimeout(timer); status.textContent = localMode ? (fighters.length ? "On this device" : "No fighters loaded") : "Live"; } };
+    db.collection("fighters").onSnapshot(snap => {
+      fighters = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      fightersLoaded = true;
+      if (!snap.metadata.fromCache) { firstF = true; ready(); }
+      render();
+    }, e => { clearTimeout(timer); status.textContent = "Fighters stopped loading. Reload the page."; });
+    db.collection("battles").orderBy("created", "desc").limit(300).onSnapshot(snap => {
+      battles = snap.docs.map(d => d.data()).filter(b => b && b.id);
+      battlesLoaded = true;
+      if (!snap.metadata.fromCache) { firstB = true; ready(); }
+      render();
+    }, e => { clearTimeout(timer); battlesLoaded = true; status.textContent = e.code === "revoked" ? "No longer available" : "Battles stopped updating. Reload the page."; render(); });
+  })();
+})();
+</script>
+
+</body>
+</html>
